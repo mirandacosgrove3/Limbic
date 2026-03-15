@@ -1,0 +1,25 @@
+{
+  "name": "Limbic Pocket",
+  "short_name": "Limbic",
+  "description": "Songwriting workspace for chords, melody, bass, drums, lyrics, and quick arrangement sketches.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#201216",
+  "theme_color": "#5b1f28",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

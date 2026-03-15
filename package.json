@@ -1,0 +1,9 @@
+{
+  "name": "limbic-pocket",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "check": "node --check src/app.js && node --check src/audioSession.js && node --check src/dataModel.js && node --check src/musicTheoryEngine.js && node --check src/songGenerator.js && node --check src/playbackEngine.js && node --check src/exportSystem.js && node --check src/uiEditor.js"
+  }
+}

@@ -1,0 +1,4029 @@
+:root {
+  color-scheme: dark;
+  --viewport-height: 100dvh;
+  --viewport-offset-top: 0px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --bottom-bar-height: 74px;
+  --bg-1: #201216;
+  --bg-2: #3d1d25;
+  --panel: rgba(66, 29, 36, 0.92);
+  --panel-strong: rgba(82, 35, 43, 0.96);
+  --line: rgba(255, 214, 219, 0.2);
+  --line-strong: rgba(255, 214, 219, 0.34);
+  --text: #fff4f4;
+  --muted: #efc8cc;
+  --accent: #ff8c95;
+  --accent-2: #ffc1c6;
+  --teal: #ffb0b7;
+  --teal-soft: rgba(255, 176, 183, 0.18);
+  --danger: #ff6f7d;
+  --shadow: 0 20px 42px rgba(16, 5, 7, 0.28);
+  --radius: 24px;
+  --radius-sm: 16px;
+  --beat-width: 56px;
+  --row-height: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg-1);
+  min-height: var(--viewport-height);
+  padding:
+    calc(14px + var(--safe-top))
+    calc(14px + var(--safe-right))
+    calc(var(--bottom-bar-height) + 10px + var(--safe-bottom))
+    calc(14px + var(--safe-left));
+  scroll-padding-top: calc(88px + var(--safe-top));
+  scroll-padding-bottom: calc(var(--bottom-bar-height) + 24px + var(--safe-bottom));
+  overscroll-behavior-y: contain;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.6;
+}
+
+body::before {
+  inset: 6% auto auto 2%;
+  width: 180px;
+  height: 180px;
+  background: rgba(255, 138, 148, 0.18);
+}
+
+body::after {
+  inset: auto 2% 8% auto;
+  width: 220px;
+  height: 220px;
+  background: rgba(255, 193, 198, 0.12);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  accent-color: var(--accent);
+  caret-color: var(--accent-2);
+}
+
+button,
+select,
+input,
+textarea {
+  border: 0;
+  border-radius: 14px;
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.app-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.app-shell-inner {
+  width: 100%;
+}
+
+.top-shell {
+  background: rgba(77, 34, 42, 0.94);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  border-radius: 30px;
+  padding: 12px 14px 10px;
+  backdrop-filter: blur(18px);
+  animation: reveal 380ms ease;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.brand-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.app-title {
+  margin: 0;
+  font-size: clamp(1.2rem, 4vw, 1.6rem);
+  letter-spacing: -0.04em;
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.header-actions .mini-button {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  min-height: 32px;
+}
+
+.mini-button.icon-button {
+  min-width: 32px;
+  padding: 6px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.button-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.title-cluster {
+  margin-top: 6px;
+}
+
+.eyebrow,
+.panel-kicker,
+.subtle-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: var(--teal);
+}
+
+.field-kicker {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.song-title {
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  font-size: clamp(1rem, 3vw, 1.25rem);
+  font-weight: 700;
+  padding: 0;
+  outline: none;
+}
+
+.transport-row,
+.action-row,
+.meta-grid,
+.panel-head,
+.inline-actions,
+.tab-strip,
+.sheet-actions,
+.builder-columns,
+.lyrics-row,
+.section-actions,
+.melody-toolbar,
+.stat-row,
+.export-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.transport-row {
+  margin-top: 12px;
+  align-items: center;
+}
+
+.transport-button,
+.action-button,
+.mini-button,
+.tab-button,
+.choice-chip,
+.suggestion-chip,
+.section-button,
+.insert-button {
+  border: 1px solid transparent;
+  min-height: 38px;
+  transition:
+    transform 140ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.transport-button:hover,
+.action-button:hover,
+.mini-button:hover,
+.tab-button:hover,
+.choice-chip:hover,
+.suggestion-chip:hover,
+.section-button:hover,
+.insert-button:hover {
+  transform: translateY(-1px);
+}
+
+.transport-button,
+.action-button,
+.mini-button,
+.insert-button {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  padding: 8px 12px;
+}
+
+.transport-button.primary,
+.action-button.primary,
+.mini-button.accent {
+  background: var(--accent);
+  color: #3c0f17;
+  font-weight: 700;
+}
+
+.action-button.active {
+  background: var(--teal-soft);
+  border-color: rgba(255, 176, 183, 0.36);
+  color: var(--teal);
+}
+
+.transport-button.ghost {
+  background: var(--teal-soft);
+  color: var(--teal);
+  border-color: rgba(255, 176, 183, 0.26);
+}
+
+.bottom-bar .transport-button.active {
+  background: var(--teal-soft);
+  color: var(--teal);
+  border-color: rgba(255, 176, 183, 0.26);
+  box-shadow: 0 0 0 1px rgba(255, 176, 183, 0.08) inset;
+}
+
+.transport-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.transport-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.mini-button.danger,
+.action-button.danger {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ffd1d1;
+  border-color: rgba(255, 107, 107, 0.24);
+}
+
+.status-pill,
+.counter-pill,
+.tag-pill {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255, 244, 244, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.meta-grid {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.sheet-grid,
+.accompaniment-grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+.meta-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.meta-field span {
+  padding-left: 2px;
+}
+
+.meta-field-value {
+  min-height: 34px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(255, 244, 244, 0.09);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.static-meta-field {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.static-meta-field .meta-field-value {
+  justify-content: center;
+  background: rgba(255, 244, 244, 0.07);
+}
+
+.meta-field input,
+.meta-field select {
+  background: rgba(255, 244, 244, 0.09);
+  color: var(--text);
+  border: 1px solid var(--line);
+  min-height: 34px;
+  font-size: 14px;
+  padding: 6px 10px;
+  outline: none;
+}
+
+.tempo-field {
+  min-width: 168px;
+}
+
+.tempo-readout {
+  color: var(--accent-2);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.tempo-launch {
+  display: none;
+}
+
+.tempo-launch:active {
+  transform: scale(0.98);
+}
+
+.tempo-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.tempo-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 140, 149, 0.9), rgba(255, 193, 198, 0.42));
+  border: 1px solid rgba(255, 214, 219, 0.18);
+}
+
+.tempo-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-top: -6px;
+  border: 0;
+  background: #fff6f6;
+  box-shadow: 0 2px 8px rgba(20, 6, 8, 0.28);
+}
+
+.tempo-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 140, 149, 0.9), rgba(255, 193, 198, 0.42));
+  border: 1px solid rgba(255, 214, 219, 0.18);
+}
+
+.tempo-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff6f6;
+  box-shadow: 0 2px 8px rgba(20, 6, 8, 0.28);
+}
+
+.lyrics-text,
+.line-bar-input {
+  background: rgba(255, 244, 244, 0.09);
+  color: var(--text);
+  border: 1px solid var(--line);
+  min-height: 42px;
+  font-size: 16px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.meta-field select,
+#arrangement-add-type {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 38px;
+}
+
+.meta-field input:focus,
+.meta-field select:focus,
+.lyrics-text:focus,
+.line-bar-input:focus {
+  border-color: rgba(255, 176, 183, 0.54);
+  box-shadow: 0 0 0 3px rgba(255, 176, 183, 0.14);
+}
+
+.meta-field select option,
+#arrangement-add-type option {
+  background: #4a2028;
+  color: var(--text);
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+/* ===== BOTTOM TRANSPORT BAR ===== */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px calc(8px + var(--safe-bottom));
+  background: rgba(53, 24, 30, 0.96);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+  min-height: var(--bottom-bar-height);
+}
+
+.bottom-bar .transport-button {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 236, 239, 0.62);
+  border-color: rgba(255, 214, 219, 0.14);
+}
+
+.bottom-bar .transport-button.transport-button--icon {
+  min-width: 36px;
+  padding: 6px 10px;
+}
+
+.bottom-bar .transport-status {
+  margin-left: auto;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.workspace {
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.workspace-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.panel {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  padding: 16px;
+  animation: reveal 480ms ease;
+}
+
+button:disabled,
+select:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.panel-head {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-head h2,
+.panel-head h3,
+.library-section h4,
+.builder-group h4 {
+  margin: 4px 0 0;
+}
+
+/* ===== CHORD PALETTE (ChordButter hero element) ===== */
+
+.chord-palette-panel {
+  border-color: rgba(255, 176, 183, 0.28);
+}
+
+.palette-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chord-palette {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-top: 12px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chord-palette::-webkit-scrollbar {
+  display: none;
+}
+
+.chord-palette.drum-mode {
+  display: block;
+  overflow-x: auto;
+}
+
+.chord-palette.borrowed-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.palette-chip {
+  flex: 0 0 auto;
+  min-width: 72px;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(255, 244, 244, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 160ms ease, box-shadow 200ms ease;
+  touch-action: manipulation;
+}
+
+.palette-chip:active {
+  transform: scale(0.95);
+}
+
+.palette-chip:hover {
+  border-color: rgba(255, 176, 183, 0.54);
+  box-shadow: 0 8px 18px rgba(34, 10, 14, 0.22);
+  transform: translateY(-2px);
+}
+
+.palette-chip .palette-roman {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.palette-chip.borrowed {
+  background: rgba(255, 225, 228, 0.08);
+  border-color: rgba(255, 193, 198, 0.22);
+}
+
+.palette-chip.borrowed:hover {
+  border-color: rgba(255, 193, 198, 0.52);
+}
+
+.drum-palette-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.drum-toolbar-field,
+.drum-toolbar-pattern {
+  min-width: 0;
+}
+
+.drum-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1 1 100%;
+}
+
+.drum-toolbar-actions .action-button {
+  flex: 1 1 140px;
+}
+
+.drum-pattern-pill {
+  cursor: pointer;
+}
+
+.drum-pattern-pill select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  min-width: 0;
+}
+
+.drum-sequencer {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.drum-sequencer-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.drum-row-label {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.drum-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.drum-voice-toggles {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.drum-toggle-button {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 244, 244, 0.06);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.drum-toggle-button.active {
+  background: rgba(255, 193, 198, 0.18);
+  border-color: rgba(255, 193, 198, 0.5);
+  color: var(--accent-2);
+}
+
+.drum-toggle-button.muted {
+  background: rgba(255, 107, 107, 0.12);
+  border-color: rgba(255, 107, 107, 0.3);
+  color: #ffd1d1;
+}
+
+.drum-row-tools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.drum-step-grid {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(18px, 1fr));
+  gap: 6px;
+}
+
+.drum-step-grid-wrap {
+  overflow: hidden;
+}
+
+.drum-step-grid-wrap.stacked {
+  overflow: visible;
+}
+
+.drum-step-grid-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.drum-step-grid.auto-fit {
+  width: max-content;
+  transform-origin: left center;
+  transform: scaleX(var(--drum-fit-scale, 1));
+}
+
+.drum-sequencer,
+.drum-step-grid,
+.drum-step,
+.drum-row-label,
+.melody-layout,
+.melody-shell,
+.grid-scroll,
+.melody-grid,
+.note-label {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.drum-step {
+  min-height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 244, 244, 0.06);
+  border: 1px solid var(--line);
+  padding: 0;
+  touch-action: none;
+  position: relative;
+}
+
+.drum-step.beat-start {
+  border-color: rgba(255, 176, 183, 0.42);
+  box-shadow: inset 2px 0 0 rgba(255, 176, 183, 0.3);
+  background: linear-gradient(90deg, rgba(255, 176, 183, 0.12), rgba(255, 244, 244, 0.06) 48%);
+}
+
+.drum-step.bar-start {
+  border-color: rgba(255, 176, 183, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(255, 176, 183, 0.5), inset 3px 0 0 rgba(255, 176, 183, 0.42);
+  background: linear-gradient(90deg, rgba(255, 176, 183, 0.2), rgba(255, 244, 244, 0.06) 56%);
+}
+
+.drum-step.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.drum-step.active.beat-start {
+  background: linear-gradient(90deg, #ffd1d5, #ffb0b7 55%);
+  border-color: #ffb0b7;
+}
+
+.drum-step.active.bar-start {
+  background: linear-gradient(90deg, #ffd5d8, var(--accent-2) 52%);
+  border-color: var(--accent-2);
+}
+
+.drum-step.dimmed {
+  opacity: 0.3;
+}
+
+.chord-palette.drum-mode.interaction-locked,
+.chord-palette.drum-mode.interaction-locked .drum-step-grid {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.drum-step.live {
+  box-shadow: 0 0 0 2px rgba(255, 193, 198, 0.34), 0 0 18px rgba(255, 140, 149, 0.18);
+  transform: translateY(-1px);
+}
+
+.drum-step.active.live {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* ===== PIANO VISUALIZER ===== */
+
+.piano-visualizer {
+  display: flex;
+  gap: 1px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.piano-key {
+  width: 18px;
+  height: 100%;
+  border-radius: 0 0 4px 4px;
+  transition: background 120ms ease;
+}
+
+.piano-key.white {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.piano-key.black {
+  background: rgba(20, 30, 35, 0.95);
+  width: 14px;
+  height: 65%;
+  margin: 0 -7px;
+  z-index: 1;
+  border-radius: 0 0 3px 3px;
+}
+
+.piano-key.active-tone {
+  background: var(--accent) !important;
+}
+
+.piano-key.root-tone {
+  background: var(--teal) !important;
+}
+
+/* ===== SECTION LIST ===== */
+
+.section-list,
+.progression-row,
+.suggestion-row,
+.chip-cloud {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.section-list::-webkit-scrollbar,
+.progression-row::-webkit-scrollbar,
+.suggestion-row::-webkit-scrollbar,
+.chip-cloud::-webkit-scrollbar,
+.arrangement-stack::-webkit-scrollbar,
+.grid-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.section-card,
+.arrangement-card {
+  min-width: 160px;
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.section-card,
+.chord-card,
+.suggestion-chip,
+.choice-chip {
+  scroll-snap-align: start;
+}
+
+.section-card.active,
+.arrangement-card.active,
+.chord-card.active {
+  border-color: rgba(255, 176, 183, 0.72);
+  box-shadow: 0 12px 28px rgba(22, 8, 10, 0.22);
+}
+
+.arrangement-overview {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arrangement-overview-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 244, 244, 0.05);
+}
+
+.arrangement-overview-card.active {
+  border-color: rgba(255, 176, 183, 0.72);
+}
+
+.arrangement-overview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.arrangement-overview-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrangement-track-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 244, 244, 0.05);
+}
+
+.arrangement-track-row.dimmed {
+  opacity: 0.58;
+}
+
+.arrangement-track-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.arrangement-track-copy strong {
+  font-size: 0.92rem;
+}
+
+.arrangement-track-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.section-card[draggable="true"],
+.arrangement-card[draggable="true"],
+.chord-card[draggable="true"] {
+  user-select: none;
+}
+
+.section-title-row,
+.chord-topline,
+.arrangement-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: center;
+}
+
+.section-card h3,
+.arrangement-card h3 {
+  margin: 4px 0 6px;
+  font-size: 1rem;
+}
+
+.section-meta,
+.small-copy,
+.body-copy,
+.line-meta,
+.empty-state {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.section-meta,
+.small-copy,
+.line-meta {
+  font-size: 0.82rem;
+}
+
+.section-button,
+.choice-chip {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.section-button.active,
+.choice-chip.active,
+.tab-button.active {
+  background: var(--teal-soft);
+  border-color: rgba(255, 176, 183, 0.36);
+  color: var(--teal);
+}
+
+/* ===== CHORD PROGRESSION ===== */
+
+.progression-row {
+  margin-top: 12px;
+  align-items: stretch;
+}
+
+.chord-card,
+.insert-button {
+  flex: 0 0 auto;
+}
+
+.chord-card {
+  min-width: 110px;
+  padding: 12px;
+  background: rgba(255, 244, 244, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  cursor: pointer;
+}
+
+.chord-card.live {
+  border-color: rgba(255, 176, 183, 0.72);
+  box-shadow: 0 10px 24px rgba(22, 8, 10, 0.24);
+}
+
+.chord-card-empty {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chord-button {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+}
+
+.chord-name {
+  margin: 4px 0 2px;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.insert-button {
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  border-color: rgba(255, 176, 183, 0.22);
+  min-height: 36px;
+  font-size: 1.1rem;
+}
+
+.insert-button.active {
+  background: rgba(255, 176, 183, 0.22);
+  border-color: rgba(255, 176, 183, 0.44);
+}
+
+.lane-empty {
+  min-width: min(72vw, 340px);
+  display: grid;
+  gap: 8px;
+  background: rgba(255, 244, 244, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+}
+
+.lane-empty h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.suggestion-wrap {
+  margin-top: 14px;
+}
+
+.suggestion-row {
+  margin-top: 8px;
+  align-items: stretch;
+}
+
+.suggestion-empty {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed rgba(255, 172, 179, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 244, 244, 0.04);
+}
+
+.suggestion-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  display: block;
+  text-align: left;
+  min-height: 38px;
+  background: rgba(255, 172, 179, 0.16);
+  border-color: rgba(255, 172, 179, 0.34);
+  color: #ffeef0;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.suggestion-chip span {
+  display: block;
+}
+
+.suggestion-group {
+  --suggestion-group-border: rgba(255, 172, 179, 0.24);
+  --suggestion-group-fill: rgba(255, 244, 244, 0.05);
+  --suggestion-group-label: #ffbec5;
+  --suggestion-chip-fill: rgba(255, 172, 179, 0.16);
+  --suggestion-chip-fill-hover: rgba(255, 172, 179, 0.24);
+  --suggestion-chip-border: rgba(255, 172, 179, 0.34);
+  --suggestion-chip-text: #fff1f2;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 180px;
+  padding: 10px;
+  border: 1px solid var(--suggestion-group-border);
+  border-radius: 16px;
+  background: var(--suggestion-group-fill);
+}
+
+.suggestion-group .chip-cloud {
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.suggestion-group .subtle-label {
+  color: var(--suggestion-group-label);
+}
+
+.suggestion-group .suggestion-chip {
+  background: var(--suggestion-chip-fill);
+  border-color: var(--suggestion-chip-border);
+  color: var(--suggestion-chip-text);
+}
+
+.suggestion-group .suggestion-chip:hover {
+  background: var(--suggestion-chip-fill-hover);
+  border-color: var(--suggestion-chip-border);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.suggestion-group[data-suggestion-group="next"] {
+  --suggestion-group-border: rgba(255, 156, 168, 0.28);
+  --suggestion-group-fill: linear-gradient(180deg, rgba(255, 146, 160, 0.12), rgba(255, 244, 244, 0.04));
+  --suggestion-group-label: #ffbac1;
+  --suggestion-chip-fill: rgba(255, 150, 164, 0.18);
+  --suggestion-chip-fill-hover: rgba(255, 150, 164, 0.28);
+  --suggestion-chip-border: rgba(255, 150, 164, 0.38);
+  --suggestion-chip-text: #fff1f3;
+}
+
+.suggestion-group[data-suggestion-group="color"] {
+  --suggestion-group-border: rgba(255, 202, 141, 0.28);
+  --suggestion-group-fill: linear-gradient(180deg, rgba(255, 183, 116, 0.11), rgba(255, 244, 244, 0.04));
+  --suggestion-group-label: #ffd9a8;
+  --suggestion-chip-fill: rgba(255, 189, 120, 0.18);
+  --suggestion-chip-fill-hover: rgba(255, 189, 120, 0.28);
+  --suggestion-chip-border: rgba(255, 189, 120, 0.4);
+  --suggestion-chip-text: #fff4dd;
+}
+
+.suggestion-group[data-suggestion-group="melody"] {
+  --suggestion-group-border: rgba(166, 218, 201, 0.28);
+  --suggestion-group-fill: linear-gradient(180deg, rgba(112, 203, 176, 0.11), rgba(255, 244, 244, 0.04));
+  --suggestion-group-label: #b9f0dc;
+  --suggestion-chip-fill: rgba(119, 208, 182, 0.16);
+  --suggestion-chip-fill-hover: rgba(119, 208, 182, 0.26);
+  --suggestion-chip-border: rgba(119, 208, 182, 0.36);
+  --suggestion-chip-text: #effff8;
+}
+
+.chord-inspector {
+  margin-top: 14px;
+}
+
+.chord-inspector-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 244, 244, 0.06);
+}
+
+.chord-inspector-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.chord-inspector-head h3 {
+  margin: 4px 0 0;
+  font-size: 1.5rem;
+}
+
+.chord-inspector-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chord-inspector-copy {
+  margin: -4px 0 0;
+}
+
+.chord-inspector-card .panel-kicker,
+.chord-inspector-card .sheet-section-title {
+  color: var(--accent-2);
+}
+
+.chord-inspector-card .small-copy {
+  color: rgba(255, 224, 228, 0.78);
+}
+
+.chord-inspector-card .status-pill {
+  color: #fff0f2;
+  background: rgba(255, 244, 244, 0.1);
+  border-color: rgba(255, 193, 198, 0.18);
+}
+
+.chord-inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.chord-chip-group {
+  display: grid;
+  gap: 8px;
+}
+
+.extension-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.extension-chip {
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 193, 198, 0.18);
+  background: rgba(255, 244, 244, 0.06);
+  color: #ffe8ea;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.extension-chip:hover {
+  border-color: rgba(255, 193, 198, 0.32);
+  background: rgba(255, 244, 244, 0.1);
+}
+
+.extension-chip.active {
+  background: rgba(255, 176, 183, 0.26);
+  border-color: rgba(255, 193, 198, 0.46);
+  color: #3c0f17;
+  box-shadow: inset 0 0 0 1px rgba(255, 244, 244, 0.16);
+}
+
+.chord-inspector-actions {
+  margin-top: 0;
+}
+
+.chord-inspector-empty {
+  margin-top: 14px;
+}
+
+/* ===== TABS ===== */
+
+.tab-strip {
+  justify-content: flex-end;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mode-switch::-webkit-scrollbar,
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-button {
+  background: rgba(255, 244, 244, 0.05);
+  color: var(--muted);
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.editor-surface {
+  margin-top: 14px;
+}
+
+.mode-surface {
+  margin-top: 14px;
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: calc(76px + var(--safe-top)) 16px calc(24px + var(--safe-bottom));
+  background: rgba(18, 8, 12, 0.64);
+  backdrop-filter: blur(16px);
+}
+
+.dialog-card {
+  width: min(520px, 100%);
+  max-height: min(680px, calc(100dvh - 120px));
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.dialog-head {
+  align-items: flex-start;
+}
+
+.dialog-surface {
+  margin-top: 14px;
+}
+
+.tempo-dialog-overlay {
+  align-items: center;
+  padding: 24px 12px;
+  background: rgba(10, 10, 12, 0.52);
+}
+
+.tempo-dialog-card {
+  width: min(320px, 100%);
+  max-height: none;
+  padding: 0;
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+.tempo-dialog-surface {
+  margin-top: 0;
+}
+
+.tempo-dialog-shell {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.tempo-dialog-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+}
+
+.tempo-dialog-title-block {
+  grid-column: 2;
+  text-align: center;
+}
+
+.tempo-dialog-kicker {
+  margin: 0;
+  color: rgba(235, 235, 245, 0.58);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.tempo-dialog-head h2 {
+  margin: 2px 0 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #f5f5f7;
+}
+
+.tempo-dialog-done {
+  grid-column: 3;
+  justify-self: end;
+  min-height: 0;
+  padding: 4px 2px;
+  border-radius: 10px;
+  background: transparent;
+  color: #4aa2ff;
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+
+.tempo-dialog-display {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 14px 12px;
+  border-radius: 18px;
+  background: #2a2a2d;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tempo-dialog-unit {
+  color: rgba(235, 235, 245, 0.55);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tempo-dialog-value {
+  color: #f5f5f7;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tempo-dialog-stepper {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tempo-dialog-step {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #2a2a2d;
+  color: #f5f5f7;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.tempo-dial {
+  --tempo-dial-size: 208px;
+  --tempo-dial-knob-offset: 74px;
+  width: var(--tempo-dial-size);
+  height: var(--tempo-dial-size);
+  margin: 2px auto 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tempo-dial-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, transparent 55%, rgba(255, 255, 255, 0.06) 55.4%, rgba(255, 255, 255, 0.06) 56.8%, transparent 57.2%),
+    conic-gradient(from 225deg, #ff8c95 0deg, #ff8c95 var(--tempo-sweep), rgba(255, 255, 255, 0.12) var(--tempo-sweep), rgba(255, 255, 255, 0.12) 270deg, transparent 270deg 360deg);
+}
+
+.tempo-dial-ticks {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 225deg, rgba(255, 255, 255, 0.3) 0deg 1.5deg, transparent 1.5deg 6.6deg);
+  -webkit-mask: radial-gradient(circle, transparent 61%, #000 62%, #000 67%, transparent 68%);
+  mask: radial-gradient(circle, transparent 61%, #000 62%, #000 67%, transparent 68%);
+  opacity: 0.72;
+}
+
+.tempo-dial-center {
+  position: absolute;
+  inset: 46px;
+  border-radius: 50%;
+  background: #1a1a1c;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.tempo-dial-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff6f6;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38);
+}
+
+/* ===== MODE PANEL ===== */
+
+.mode-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.studio-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.studio-track-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.studio-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 244, 244, 0.05);
+}
+
+.mode-grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inspector-card,
+.idea-card,
+.lane-empty,
+.summary-row {
+  background: rgba(255, 244, 244, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.inspector-card,
+.idea-card,
+.lane-empty {
+  padding: 14px;
+}
+
+.inspector-card.compact {
+  padding: 12px;
+}
+
+.idea-stack,
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.summary-list.compact {
+  gap: 6px;
+}
+
+.summary-row {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  color: var(--muted);
+}
+
+.summary-row strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.harmony-studio {
+  margin-top: 12px;
+}
+
+.harmony-studio-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.harmony-pills {
+  margin-top: 10px;
+}
+
+/* ===== MELODY EDITOR ===== */
+
+.melody-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 244, 244, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.toggle-pill input {
+  width: 18px;
+  height: 18px;
+}
+
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 244, 244, 0.05);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mode-switch.embedded {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.mode-button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.mode-button.active {
+  background: var(--accent);
+  color: #3c0f17;
+  font-weight: 700;
+}
+
+.melody-shell {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(40, 18, 22, 0.9);
+  position: relative;
+  isolation: isolate;
+  touch-action: pan-x pan-y;
+}
+
+.pitch-rail {
+  background: rgba(57, 24, 30, 0.94);
+  border-right: 1px solid var(--line);
+  position: relative;
+  z-index: 2;
+}
+
+.pitch-label {
+  height: var(--row-height);
+  min-height: var(--row-height);
+  padding: 0 6px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  border-bottom: 1px solid rgba(155, 203, 205, 0.08);
+}
+
+.grid-scroll {
+  overflow: auto;
+  position: relative;
+  max-height: 60vh;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  background: rgba(40, 18, 22, 0.94);
+  isolation: isolate;
+  contain: paint;
+  z-index: 1;
+  touch-action: pan-x pan-y;
+}
+
+.grid-scroll.interaction-locked {
+  touch-action: none;
+  overscroll-behavior: none;
+  overflow: hidden;
+  -webkit-overflow-scrolling: auto;
+}
+
+html.melody-interaction-locked,
+body.melody-interaction-locked {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body[data-touch="true"].melody-interaction-locked {
+  touch-action: none;
+}
+
+.melody-grid {
+  min-width: 100%;
+  position: relative;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(var(--beat-width) - 1px),
+      rgba(255, 214, 219, 0.08) calc(var(--beat-width) - 1px),
+      rgba(255, 214, 219, 0.08) var(--beat-width)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 244, 244, 0.03),
+      rgba(255, 244, 244, 0.03) calc(var(--row-height) - 1px),
+      rgba(255, 214, 219, 0.06) calc(var(--row-height) - 1px),
+      rgba(255, 214, 219, 0.06) var(--row-height)
+    );
+}
+
+.ghost-note-block {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255, 193, 198, 0.16);
+  border: 1px dashed rgba(255, 193, 198, 0.28);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ghost-note-block.melody-guide {
+  background: rgba(255, 176, 183, 0.1);
+  border-color: rgba(255, 176, 183, 0.22);
+}
+
+.melody-note-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 244, 244, 0.05);
+}
+
+.melody-note-strip-slot {
+  min-height: 112px;
+}
+
+.melody-note-strip-slot > .melody-note-strip {
+  height: 100%;
+}
+
+.melody-note-strip-empty {
+  justify-content: center;
+}
+
+.melody-note-strip-empty .small-copy {
+  margin: 0;
+}
+
+.melody-note-summary h3 {
+  margin: 4px 0;
+  font-size: 1.1rem;
+}
+
+.melody-note-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 214, 142, 0.16);
+  border: 1px solid rgba(255, 214, 142, 0.42);
+  color: #ffd58e;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.melody-note-summary .small-copy {
+  margin: 0;
+}
+
+.melody-note-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.melody-note-transpose-pair {
+  display: flex;
+  gap: 8px;
+}
+
+.melody-note-transpose-pair .action-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.melody-note-length-field {
+  min-width: 84px;
+}
+
+.melody-note-length-field select {
+  min-width: 84px;
+}
+
+.bar-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 176, 183, 0.34);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.note-block {
+  position: absolute;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 5px 3px 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+  z-index: 3;
+}
+
+.note-block.chord-tone {
+  background: rgba(255, 176, 183, 0.9);
+  color: #351015;
+}
+
+.note-block.scale-tone {
+  background: rgba(255, 140, 149, 0.9);
+  color: #351015;
+}
+
+.note-block.out-tone,
+.note-block.passing-tone {
+  background: rgba(142, 101, 109, 0.88);
+  color: #fff4f4;
+}
+
+.note-block.active {
+  outline: 2px solid rgba(255, 176, 183, 0.86);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px rgba(255, 176, 183, 0.24), 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.note-block.resize-armed {
+  outline-color: rgba(255, 214, 142, 0.95);
+  box-shadow: 0 0 0 2px rgba(255, 214, 142, 0.28), 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.note-block.muted {
+  opacity: 0.42;
+  border-style: dashed;
+}
+
+.note-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  pointer-events: none;
+  transform-origin: left center;
+  transform: scaleX(var(--live-note-label-scale, 1));
+  white-space: nowrap;
+}
+
+.resize-handle {
+  position: relative;
+  width: 11px;
+  height: 100%;
+  border-radius: 0 8px 8px 0;
+  background: rgba(0, 0, 0, 0.12);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  touch-action: none;
+  cursor: ew-resize;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* Three vertical grip dots */
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 -5px 0 rgba(255, 255, 255, 0.5),
+    0  5px 0 rgba(255, 255, 255, 0.5);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Armed state — amber edge */
+.note-block.resize-armed .resize-handle {
+  background: rgba(255, 200, 100, 0.22);
+  border-left-color: rgba(255, 214, 142, 0.55);
+}
+
+.note-block.resize-armed .resize-handle::before {
+  background: rgba(255, 214, 142, 0.9);
+  box-shadow:
+    0 -5px 0 rgba(255, 214, 142, 0.9),
+    0  5px 0 rgba(255, 214, 142, 0.9);
+}
+
+/* Active resize drag — right-side glow */
+.note-block.is-resizing {
+  box-shadow:
+    0 0 0 2px rgba(255, 176, 183, 0.24),
+    6px 0 18px rgba(255, 176, 183, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.note-block.is-resizing .resize-handle {
+  background: rgba(255, 255, 255, 0.18);
+  border-left-color: rgba(255, 255, 255, 0.28);
+}
+
+.note-block.is-resizing .resize-handle::before {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 -5px 0 rgba(255, 255, 255, 0.85),
+    0  5px 0 rgba(255, 255, 255, 0.85);
+}
+
+body[data-touch="true"] .resize-handle {
+  width: 18px;
+  min-width: 18px;
+}
+
+body[data-touch="true"] .note-block {
+  padding-right: 4px;
+}
+
+.playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 176, 183, 0.1), rgba(255, 176, 183, 0.85), rgba(255, 176, 183, 0.1));
+  box-shadow: 0 0 18px rgba(255, 176, 183, 0.35);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.quick-select-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.quick-select-cursor {
+  position: absolute;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 214, 219, 0.78);
+  background: rgba(255, 176, 183, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 214, 219, 0.16), 0 0 24px rgba(255, 176, 183, 0.16);
+}
+
+.quick-select-rect {
+  position: absolute;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 214, 219, 0.82);
+  background: rgba(255, 176, 183, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 219, 0.08), 0 0 18px rgba(255, 176, 183, 0.12);
+}
+
+.legend-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.legend-swatch.rose {
+  background: rgba(255, 193, 198, 0.48);
+}
+
+.legend-swatch.green {
+  background: rgba(108, 211, 198, 0.86);
+}
+
+.legend-swatch.teal {
+  background: rgba(126, 177, 231, 0.9);
+}
+
+.legend-swatch.gray {
+  background: rgba(122, 133, 141, 0.9);
+}
+
+/* ===== LYRICS ===== */
+
+.lyrics-list,
+.arrangement-stack {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lyrics-row,
+.arrangement-card {
+  background: rgba(255, 244, 244, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.lyrics-row {
+  align-items: flex-start;
+}
+
+.lyrics-text {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+}
+
+.line-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.line-bar-input {
+  width: 80px;
+}
+
+.chip-cloud {
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.song-sheet-line p {
+  margin: 4px 0 0;
+}
+
+/* ===== LIBRARY ===== */
+
+.library-section,
+.builder-group {
+  margin-top: 14px;
+}
+
+.builder-columns {
+  margin-top: 10px;
+  align-items: flex-start;
+}
+
+.builder-group {
+  flex: 1;
+}
+
+.drop-target {
+  outline: 2px dashed rgba(255, 176, 183, 0.42);
+  outline-offset: 2px;
+}
+
+.idea-card .small-copy {
+  margin: 0;
+}
+
+.empty-state {
+  background: rgba(255, 244, 244, 0.05);
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (pointer: coarse) {
+  .transport-button,
+  .action-button,
+  .mini-button,
+  .tab-button,
+  .section-button,
+  .choice-chip,
+  .suggestion-chip,
+  .insert-button {
+    min-height: 44px;
+  }
+
+  .palette-chip {
+    min-height: 56px;
+  }
+
+  .resize-handle {
+    width: 14px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .top-shell {
+    position: static;
+  }
+}
+
+@media (min-width: 768px) {
+  body {
+    padding:
+      calc(20px + var(--safe-top))
+      calc(20px + var(--safe-right))
+      calc(120px + var(--safe-bottom))
+      calc(20px + var(--safe-left));
+  }
+
+  .meta-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .chord-palette-panel {
+    grid-column: 1 / -1;
+  }
+
+  .workspace-column-left {
+    grid-column: 1 / 2;
+  }
+
+  .workspace-column-right {
+    grid-column: 2 / 3;
+  }
+
+  .mode-panel {
+    grid-column: 1 / -1;
+  }
+
+  .editor-panel {
+    grid-column: 1 / -1;
+  }
+
+  .sheet {
+    left: 50%;
+    right: auto;
+    width: min(600px, calc(100vw - 48px));
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    padding:
+      calc(10px + var(--safe-top))
+      calc(10px + var(--safe-right))
+      calc(110px + var(--safe-bottom))
+      calc(10px + var(--safe-left));
+  }
+
+  .panel,
+  .top-shell,
+  .sheet {
+    border-radius: 22px;
+  }
+
+  .brand-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .transport-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .transport-row .status-pill {
+    grid-column: 1 / -1;
+  }
+
+  .melody-shell {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-inspector-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .melody-note-strip {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .melody-note-actions {
+    justify-content: stretch;
+  }
+
+  .melody-note-actions .action-button {
+    flex: 1 1 120px;
+  }
+
+  .palette-head-actions,
+  .drum-palette-toolbar {
+    justify-content: stretch;
+  }
+
+  .drum-sequencer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .drum-step-grid {
+    min-width: 560px;
+  }
+
+  .studio-track-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .harmony-studio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .status-pill {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .section-card {
+    min-width: min(70vw, 220px);
+  }
+
+  .chord-card {
+    min-width: min(40vw, 130px);
+  }
+
+  .palette-chip {
+    min-width: 52px;
+  }
+
+  .arrangement-track-row,
+  .arrangement-overview-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 430px) {
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .meta-grid,
+  .sheet-grid,
+  .accompaniment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+
+  .inline-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inline-actions .mini-button.accent {
+    grid-column: 1 / -1;
+  }
+
+  .song-title {
+    font-size: 1.15rem;
+  }
+
+  .chord-inspector-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== LAYOUT PROFILES ===== */
+
+body[data-browser-profile="safari"] {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body[data-browser-profile="safari"] .top-shell,
+body[data-browser-profile="safari"] .panel,
+body[data-browser-profile="safari"] .sheet {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  background-clip: padding-box;
+}
+
+body[data-browser-profile="safari"] .section-list,
+body[data-browser-profile="safari"] .progression-row,
+body[data-browser-profile="safari"] .suggestion-row,
+body[data-browser-profile="safari"] .tab-strip,
+body[data-browser-profile="safari"] .mode-switch,
+body[data-browser-profile="safari"] .grid-scroll {
+  overscroll-behavior: contain;
+}
+
+body[data-browser-profile="safari"] input,
+body[data-browser-profile="safari"] textarea {
+  -webkit-user-select: text;
+}
+
+body[data-layout-profile="iphone"] .app-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  display: block;
+  overflow-x: clip;
+}
+
+body[data-layout-profile="iphone"] {
+  --bottom-bar-height: 56px;
+  --view-tabs-height: 44px;
+  --panel: var(--bg-1);
+  --panel-strong: #2a1419;
+  --shadow: none;
+  --ios-text-2xs: 0.56rem;
+  --ios-text-xs: 0.62rem;
+  --ios-text-sm: 0.72rem;
+  --ios-text-md: 0.82rem;
+  --ios-text-lg: 0.9rem;
+  --ios-radius-sm: 10px;
+  --ios-radius-md: 12px;
+  --ios-radius-pill: 999px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font-size: 12px;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
+  padding:
+    var(--safe-top)
+    0
+    calc(var(--bottom-bar-height) + var(--view-tabs-height) + var(--safe-bottom))
+    0;
+  -webkit-font-smoothing: antialiased;
+}
+
+body[data-layout-profile="iphone"]::before,
+body[data-layout-profile="iphone"]::after {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-standalone="true"] {
+  padding-top: var(--safe-top);
+}
+
+body[data-layout-profile="iphone"] .app-shell-inner {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  transform: none;
+  overflow-x: clip;
+}
+
+body[data-layout-profile="iphone"] .top-shell {
+  position: static;
+  top: auto;
+  z-index: auto;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 12px;
+}
+
+body[data-layout-profile="iphone"] .brand-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+body[data-layout-profile="iphone"] .brand-copy {
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+body[data-layout-profile="iphone"] .header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: auto;
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .header-actions .mini-button {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: var(--ios-text-xs);
+  white-space: nowrap;
+}
+
+body[data-layout-profile="iphone"] .header-actions .mini-button.icon-button {
+  min-width: 32px;
+  padding-inline: 6px;
+}
+
+body[data-layout-profile="iphone"] .app-title {
+  min-width: 0;
+  font-size: var(--ios-text-md);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-layout-profile="iphone"] .song-title {
+  font-size: var(--ios-text-md);
+  font-weight: 600;
+}
+
+body[data-layout-profile="iphone"] .title-cluster {
+  margin-top: 2px;
+}
+
+body[data-layout-profile="iphone"] .workspace {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 0;
+}
+
+body[data-layout-profile="iphone"] .chord-palette-panel,
+body[data-layout-profile="iphone"] .workspace-column-left,
+body[data-layout-profile="iphone"] .workspace-column-right,
+body[data-layout-profile="iphone"] .mode-panel,
+body[data-layout-profile="iphone"] .editor-panel {
+  grid-column: auto;
+}
+
+body[data-layout-profile="iphone"] .meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+body[data-layout-profile="iphone"] .sheet-grid,
+body[data-layout-profile="iphone"] .accompaniment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-layout-profile="iphone"] .full-width {
+  grid-column: auto;
+}
+
+body[data-layout-profile="iphone"] .transport-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .transport-row .status-pill {
+  grid-column: 1 / -1;
+}
+
+body[data-layout-profile="iphone"] .panel-head {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+body[data-layout-profile="iphone"] .mode-grid,
+body[data-layout-profile="iphone"] .harmony-studio-grid {
+  grid-template-columns: 1fr;
+}
+
+body[data-layout-profile="iphone"] .panel {
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: var(--bg-1);
+  padding: 8px 12px;
+  animation: none;
+}
+
+body[data-layout-profile="iphone"] .panel + .panel,
+body[data-layout-profile="iphone"] .workspace-column .panel {
+  border-top: 1px solid var(--line);
+}
+
+body[data-layout-profile="iphone"] .panel-head h2,
+body[data-layout-profile="iphone"] .panel-head h3 {
+  font-size: var(--ios-text-lg);
+  margin: 0;
+}
+
+body[data-layout-profile="iphone"] .panel-kicker,
+body[data-layout-profile="iphone"] .subtle-label {
+  font-size: var(--ios-text-2xs);
+  letter-spacing: 0.12em;
+  opacity: 0.5;
+}
+
+body[data-layout-profile="iphone"] .small-copy,
+body[data-layout-profile="iphone"] .line-meta,
+body[data-layout-profile="iphone"] .section-meta,
+body[data-layout-profile="iphone"] .body-copy {
+  font-size: var(--ios-text-xs);
+}
+
+body[data-layout-profile="iphone"] .section-card h3,
+body[data-layout-profile="iphone"] .arrangement-card h3,
+body[data-layout-profile="iphone"] .chord-card h3 {
+  font-size: var(--ios-text-lg);
+}
+
+body[data-layout-profile="iphone"] .chord-inspector-card .panel-kicker,
+body[data-layout-profile="iphone"] .chord-inspector-card .sheet-section-title {
+  color: rgba(255, 199, 205, 0.88);
+}
+
+body[data-layout-profile="iphone"] .chord-inspector-card .small-copy {
+  color: rgba(255, 227, 231, 0.74);
+}
+
+body[data-layout-profile="iphone"] .chord-inspector-card .extension-grid {
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .chord-inspector-card .extension-chip {
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: var(--ios-text-sm);
+  border-radius: var(--ios-radius-pill);
+}
+
+body[data-layout-profile="iphone"] .transport-button,
+body[data-layout-profile="iphone"] .action-button,
+body[data-layout-profile="iphone"] .mini-button,
+body[data-layout-profile="iphone"] .tab-button,
+body[data-layout-profile="iphone"] .choice-chip,
+body[data-layout-profile="iphone"] .suggestion-chip,
+body[data-layout-profile="iphone"] .section-button,
+body[data-layout-profile="iphone"] .insert-button,
+body[data-layout-profile="iphone"] .mode-button {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: var(--ios-text-sm);
+  border-radius: var(--ios-radius-md);
+  transition: background 100ms ease, color 100ms ease;
+}
+
+body[data-layout-profile="iphone"] .transport-button:hover,
+body[data-layout-profile="iphone"] .action-button:hover,
+body[data-layout-profile="iphone"] .mini-button:hover,
+body[data-layout-profile="iphone"] .tab-button:hover,
+body[data-layout-profile="iphone"] .choice-chip:hover,
+body[data-layout-profile="iphone"] .suggestion-chip:hover,
+body[data-layout-profile="iphone"] .section-button:hover,
+body[data-layout-profile="iphone"] .insert-button:hover,
+body[data-layout-profile="iphone"] .palette-chip:hover {
+  transform: none;
+}
+
+body[data-layout-profile="iphone"] .status-pill,
+body[data-layout-profile="iphone"] .counter-pill,
+body[data-layout-profile="iphone"] .tag-pill {
+  padding: 6px 8px;
+  font-size: var(--ios-text-xs);
+  border-radius: var(--ios-radius-pill);
+}
+
+body[data-layout-profile="iphone"] .meta-field {
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--ios-text-xs);
+  background: rgba(255, 244, 244, 0.06);
+  border-radius: var(--ios-radius-sm);
+  padding: 3px 6px;
+  border: none;
+}
+
+body[data-layout-profile="iphone"] .meta-field > span {
+  font-size: var(--ios-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+body[data-layout-profile="iphone"] .meta-field input,
+body[data-layout-profile="iphone"] .meta-field select {
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  font-size: var(--ios-text-sm);
+  background: transparent;
+  border: none;
+  color: var(--text);
+}
+
+body[data-layout-profile="iphone"] .meta-field-value {
+  min-height: 0;
+  padding: 0;
+  font-size: var(--ios-text-sm);
+  background: transparent;
+  border: none;
+}
+
+body[data-layout-profile="iphone"] input,
+body[data-layout-profile="iphone"] select,
+body[data-layout-profile="iphone"] textarea {
+  font-size: 16px;
+}
+
+body[data-layout-profile="iphone"] .tempo-field {
+  grid-column: auto;
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 3px;
+}
+
+body[data-layout-profile="iphone"] .tempo-field .meta-field-head {
+  display: contents;
+}
+
+body[data-layout-profile="iphone"] .tempo-readout {
+  font-size: var(--ios-text-sm);
+  font-weight: 600;
+}
+
+body[data-layout-profile="iphone"] .tempo-slider {
+  display: none;
+}
+
+.tempo-stepper {
+  display: none;
+}
+
+body[data-layout-profile="iphone"] .tempo-stepper {
+  display: none;
+}
+
+body[data-layout-profile="iphone"] .tempo-launch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--ios-radius-pill);
+  background: rgba(255, 244, 244, 0.1);
+  color: var(--accent-2);
+  border: 1px solid rgba(255, 214, 219, 0.12);
+  font-size: var(--ios-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body[data-layout-profile="iphone"] .tab-strip,
+body[data-layout-profile="iphone"] .palette-head-actions,
+body[data-layout-profile="iphone"] .drum-palette-toolbar,
+body[data-layout-profile="iphone"] .mode-switch,
+body[data-layout-profile="iphone"] .chord-palette {
+  overflow-x: visible;
+  overflow-y: visible;
+  scrollbar-width: none;
+  scroll-snap-type: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+body[data-layout-profile="iphone"] .tab-strip,
+body[data-layout-profile="iphone"] .palette-head-actions,
+body[data-layout-profile="iphone"] .drum-palette-toolbar,
+body[data-layout-profile="iphone"] .mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .tab-strip {
+  justify-content: stretch;
+}
+
+body[data-layout-profile="iphone"] .palette-head-actions {
+  justify-content: stretch;
+  align-items: stretch;
+  flex-direction: column;
+}
+
+body[data-layout-profile="iphone"] .palette-head-actions > * {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .mode-switch {
+  flex-wrap: wrap;
+  width: 100%;
+  border-radius: var(--ios-radius-pill);
+  padding: 3px;
+}
+
+body[data-layout-profile="iphone"] .mode-switch.embedded {
+  width: 100%;
+}
+
+body[data-layout-profile="iphone"] .mode-button {
+  flex: 1 1 calc(50% - 6px);
+  min-width: 0;
+  justify-content: center;
+  border-radius: var(--ios-radius-pill);
+}
+
+body[data-layout-profile="iphone"] .section-list,
+body[data-layout-profile="iphone"] .progression-row,
+body[data-layout-profile="iphone"] .chip-cloud {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 4px;
+  padding-bottom: 0;
+}
+
+body[data-layout-profile="iphone"] .suggestion-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+body[data-layout-profile="iphone"] .suggestion-group {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 14px;
+}
+
+body[data-layout-profile="iphone"] .suggestion-group .chip-cloud {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .suggestion-group .subtle-label {
+  font-size: var(--ios-text-2xs);
+  letter-spacing: 0.08em;
+}
+
+body[data-layout-profile="iphone"] .chord-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"] .palette-chip {
+  min-height: 40px;
+  min-width: 0;
+  border-radius: var(--ios-radius-md);
+  border: none;
+  padding: 4px 6px;
+  font-size: var(--ios-text-lg);
+  font-weight: 600;
+  background: rgba(255, 244, 244, 0.1);
+  gap: 1px;
+}
+
+body[data-layout-profile="iphone"] .palette-chip:active {
+  transform: scale(0.95);
+}
+
+body[data-layout-profile="iphone"] .palette-chip small,
+body[data-layout-profile="iphone"] .palette-chip .chip-sub {
+  font-size: var(--ios-text-2xs);
+  opacity: 0.5;
+}
+
+body[data-layout-profile="iphone"] .chord-palette.drum-mode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"] .tab-strip::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .palette-head-actions::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .drum-palette-toolbar::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .section-list::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .progression-row::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .suggestion-row::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .chip-cloud::-webkit-scrollbar,
+body[data-layout-profile="iphone"] .chord-palette::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-layout-profile="iphone"] .melody-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .drum-palette-toolbar {
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+body[data-layout-profile="iphone"] .drum-palette-toolbar > * {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .drum-toolbar-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body[data-layout-profile="iphone"] .drum-toolbar-actions .action-button {
+  min-width: 0;
+  width: 100%;
+  flex: none;
+}
+
+body[data-layout-profile="iphone"] .drum-sequencer {
+  gap: 8px;
+}
+
+body[data-layout-profile="iphone"] .drum-sequencer-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255, 214, 219, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 244, 244, 0.04);
+}
+
+body[data-layout-profile="iphone"] .drum-row-label {
+  gap: 3px;
+  font-size: 0.72rem;
+}
+
+body[data-layout-profile="iphone"] .drum-row-header {
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"] .drum-toggle-button {
+  min-width: 22px;
+  min-height: 22px;
+  font-size: 0.62rem;
+}
+
+body[data-layout-profile="iphone"] .drum-row-tools {
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"] .drum-row-tools .mini-button {
+  min-height: 24px;
+  padding: 4px 7px;
+  font-size: 0.68rem;
+}
+
+body[data-layout-profile="iphone"] .drum-step-grid {
+  min-width: 0;
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"] .drum-step-grid.auto-fit {
+  width: 100%;
+  transform: none;
+}
+
+body[data-layout-profile="iphone"] .drum-step-grid-stack {
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"] .drum-step-grid--mobile-bar {
+  padding: 3px;
+  border: 1px solid rgba(255, 214, 219, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 244, 244, 0.02);
+}
+
+body[data-layout-profile="iphone"] .panel,
+body[data-layout-profile="iphone"] .workspace,
+body[data-layout-profile="iphone"] .workspace-column,
+body[data-layout-profile="iphone"] .editor-surface,
+body[data-layout-profile="iphone"] .mode-surface,
+body[data-layout-profile="iphone"] .drum-step-grid-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body[data-layout-profile="iphone"] .editor-panel,
+body[data-layout-profile="iphone"] .editor-surface,
+body[data-layout-profile="iphone"] .melody-layout,
+body[data-layout-profile="iphone"] .melody-shell,
+body[data-layout-profile="iphone"] .legend-row,
+body[data-layout-profile="iphone"] .melody-note-strip-slot,
+body[data-layout-profile="iphone"] .melody-note-strip {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body[data-layout-profile="iphone"] .editor-surface,
+body[data-layout-profile="iphone"] .melody-layout,
+body[data-layout-profile="iphone"] .melody-note-strip-slot {
+  overflow-x: clip;
+  touch-action: pan-y;
+}
+
+body[data-layout-profile="iphone"] .dialog-overlay {
+  padding: var(--safe-top) 0 0;
+  align-items: flex-end;
+}
+
+body[data-layout-profile="iphone"] .tempo-dialog-overlay {
+  padding: calc(18px + var(--safe-top)) 16px calc(18px + var(--safe-bottom));
+  align-items: center;
+}
+
+body[data-layout-profile="iphone"] .dialog-card {
+  width: 100%;
+  max-height: 85dvh;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 12px calc(12px + var(--safe-bottom));
+}
+
+body[data-layout-profile="iphone"] .tempo-dialog-card {
+  width: min(320px, 100%);
+  max-height: none;
+  border-radius: 22px;
+  padding: 0;
+}
+
+body[data-layout-profile="iphone"] .drum-step {
+  border-radius: 6px;
+  min-height: 18px;
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .note-layer-switch,
+body[data-layout-profile="iphone"] .melody-toolbar > .action-button {
+  grid-column: 1 / -1;
+}
+
+body[data-layout-profile="iphone"] .pitch-label {
+  font-size: 0.78rem;
+  padding: 0 6px;
+}
+
+body[data-layout-profile="iphone"] .note-label {
+  font-size: 0.78rem;
+}
+
+body[data-layout-profile="iphone"] .note-block {
+  border-radius: 12px;
+  padding: 4px 5px 4px 8px;
+}
+
+body[data-layout-profile="iphone"] .melody-lock-pill {
+  min-height: 40px;
+  justify-content: center;
+  width: 100%;
+}
+
+body[data-layout-profile="iphone"] .selection-mode-switch {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .melody-snap-field {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .melody-snap-field select {
+  width: 100%;
+}
+
+body[data-layout-profile="iphone"] .melody-shell {
+  grid-template-columns: 48px minmax(0, 1fr);
+  touch-action: none;
+}
+
+body[data-layout-profile="iphone"] .grid-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 55dvh;
+  touch-action: none;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+body[data-layout-profile="iphone"] .legend-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+body[data-layout-profile="iphone"] .legend-item {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  gap: 6px;
+  font-size: var(--ios-text-sm);
+  line-height: 1.2;
+  white-space: normal;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"] .melody-note-strip {
+  flex-direction: column;
+  align-items: stretch;
+  touch-action: pan-y;
+}
+
+body[data-layout-profile="iphone"] .melody-note-strip-slot {
+  min-height: 178px;
+}
+
+body[data-layout-profile="iphone"] .melody-note-actions {
+  justify-content: stretch;
+}
+
+body[data-layout-profile="iphone"] .melody-note-actions > * {
+  flex: 1 1 120px;
+}
+
+body[data-layout-profile="iphone"] .melody-note-transpose-pair {
+  flex: 1 1 120px;
+}
+
+body[data-layout-profile="iphone"] .inline-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-layout-profile="iphone"] .inline-actions .mini-button.accent {
+  grid-column: 1 / -1;
+}
+
+body[data-layout-profile="iphone"] .section-card {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .chord-card {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .palette-chip,
+body[data-layout-profile="iphone"] .suggestion-chip,
+body[data-layout-profile="iphone"] .choice-chip,
+body[data-layout-profile="iphone"] .section-card,
+body[data-layout-profile="iphone"] .chord-card,
+body[data-layout-profile="iphone"] .insert-button {
+  width: 100%;
+}
+
+body[data-layout-profile="iphone"] .bottom-bar {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  transform: none;
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--line);
+  background: var(--bg-1);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 4px 12px calc(4px + var(--safe-bottom));
+  gap: 3px;
+  box-shadow: none;
+  min-height: var(--bottom-bar-height);
+}
+
+body[data-layout-profile="iphone"] .bottom-bar .transport-button {
+  min-width: 36px;
+  min-height: 32px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+}
+
+body[data-layout-profile="iphone"] .bottom-bar .transport-button.primary {
+  background: var(--accent);
+  color: #3c0f17;
+  border-radius: 50%;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+}
+
+body[data-layout-profile="iphone"] .bottom-bar .transport-button.transport-button--icon {
+  min-width: 32px;
+  padding: 4px;
+}
+
+body[data-layout-profile="iphone"] .bottom-bar .transport-status {
+  flex: 1 1 auto;
+  justify-content: space-between;
+  margin-left: 0;
+  font-size: 0.68rem;
+  padding: 0 6px;
+  background: transparent;
+  border: none;
+}
+
+body[data-layout-profile="iphone"][data-browser-profile="safari"] .editor-panel,
+body[data-layout-profile="iphone"][data-browser-profile="safari"] .chord-palette-panel,
+body[data-layout-profile="iphone"][data-browser-profile="safari"] .bottom-bar,
+body[data-layout-profile="iphone"][data-browser-profile="safari"] .top-shell,
+body[data-layout-profile="iphone"][data-browser-profile="safari"] .iphone-view-tabs {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Chord and section cards — tighter */
+body[data-layout-profile="iphone"] .chord-card {
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 214, 219, 0.1);
+  background: rgba(255, 244, 244, 0.05);
+}
+
+body[data-layout-profile="iphone"] .chord-card.active {
+  border-color: rgba(255, 176, 183, 0.5);
+  box-shadow: none;
+}
+
+body[data-layout-profile="iphone"] .section-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+body[data-layout-profile="iphone"] .section-card.active {
+  box-shadow: none;
+}
+
+body[data-layout-profile="iphone"] .suggestion-chip {
+  border-radius: var(--ios-radius-pill);
+  padding: 6px 8px;
+  min-height: 32px;
+  box-shadow: none;
+  text-align: center;
+}
+
+body[data-layout-profile="iphone"] .suggestion-chip span {
+  font-size: var(--ios-text-sm);
+  line-height: 1.1;
+}
+
+body[data-layout-profile="iphone"] .tab-button {
+  flex: 1;
+  text-align: center;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+/* ===== iPhone Full-Screen View Switching ===== */
+
+.iphone-view-tabs {
+  display: none;
+}
+
+body[data-layout-profile="iphone"] .iphone-view-tabs {
+  position: fixed;
+  bottom: calc(var(--bottom-bar-height) + var(--safe-bottom));
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--bg-1);
+  border-top: 1px solid var(--line);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 2px 0;
+  height: var(--view-tabs-height);
+}
+
+body[data-layout-profile="iphone"] .iphone-view-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 4px 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(239, 200, 204, 0.5);
+  font-size: 0.55rem;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body[data-layout-profile="iphone"] .iphone-view-tab.active {
+  color: var(--accent);
+}
+
+body[data-layout-profile="iphone"] .iphone-view-tab-icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* Editor view: hide everything except editor panel */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .chord-palette-panel,
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .workspace-column-left,
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .workspace-column-right,
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .mode-panel {
+  display: none !important;
+}
+
+/* Chords view: hide editor panel and arrangement overview (no duplicate tracks) */
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .editor-panel {
+  display: none !important;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .arrangement-overview-panel {
+  display: none !important;
+}
+
+/* ===== FULL-SCREEN EDITOR VIEW ===== */
+
+/* Tools toggle: hidden on iPad/Mac, visible on iPhone */
+.melody-tools-toggle { display: none !important; }
+body[data-layout-profile="iphone"] .melody-tools-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  min-height: 26px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+body[data-layout-profile="iphone"][data-melody-tools-open] .melody-tools-toggle {
+  background: rgba(255, 140, 149, 0.18);
+  color: var(--accent);
+  border-color: rgba(255, 140, 149, 0.4);
+}
+
+/* Layer bar: always visible in editor (Melody/Bass toggle + lock status) */
+.melody-layer-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  padding: 4px 0 2px;
+}
+
+.melody-lock-pill-inline {
+  font-size: 0.6rem;
+  padding: 4px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+/* Editor view: full-viewport panel, no page scroll */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .top-shell {
+  display: none;
+}
+
+/* Body acts as the full-screen container — header gone, just the panel */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] {
+  padding-top: var(--safe-top);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .app-shell {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .app-shell-inner {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .workspace {
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-panel {
+  position: static;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border-top: none;
+  background: var(--bg-1);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .panel-head {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+/* Hide Studio/Arrangement tabs in pure editor view (they live in Tracks tab) */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .tab-strip .tab-button[data-tab="studio"],
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .tab-strip .tab-button[data-tab="arrangement"] {
+  display: none;
+}
+
+/* In tracks view: hide melody/lyrics tabs */
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .tab-strip .tab-button[data-tab="melody"],
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .tab-strip .tab-button[data-tab="lyrics"] {
+  display: none;
+}
+
+/* Editor surface fills remaining space */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-surface {
+  flex: 1 1 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Melody layout fills editor surface */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-layout {
+  flex: 1 1 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Layer bar padding within the fixed panel */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-layer-bar {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+/* Toolbar: HIDDEN by default in editor view, accessible via Tools button */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-toolbar {
+  display: none !important;
+}
+
+/* Toolbar appears as a fixed bottom sheet when open */
+body[data-layout-profile="iphone"][data-iphone-view="editor"][data-melody-tools-open] .melody-toolbar {
+  display: grid !important;
+  position: fixed;
+  bottom: calc(var(--bottom-bar-height) + var(--view-tabs-height) + var(--safe-bottom));
+  left: 0;
+  right: 0;
+  z-index: 260;
+  background: var(--bg-1);
+  border-top: 2px solid var(--accent);
+  padding: 12px;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Backdrop to dismiss the tools sheet */
+body[data-layout-profile="iphone"][data-iphone-view="editor"][data-melody-tools-open] .melody-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 259;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Melody shell is the vertical scroll container — pitch rail + grid scroll together */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-shell {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 0;
+  border: none;
+  min-height: 0;
+  align-items: start; /* let grid items take natural content height so shell can scroll */
+}
+
+/* Grid scroll handles horizontal pan only — vertical handled by melody-shell */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .grid-scroll {
+  max-height: none !important;
+  height: auto;
+  overflow-x: auto;
+  overflow-y: visible;
+  touch-action: none; /* preserve pinch-to-zoom handler */
+}
+
+/* Pitch rail height matches full grid */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .pitch-rail {
+  overflow: hidden;
+}
+
+/* Hide legend row and full note strip — actions now in layer bar + note popup */
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .legend-row,
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-note-strip-slot {
+  display: none;
+}
+
+/* Layer bar: mute/length/delete hidden until notes are selected */
+.note-layer-actions {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+body[data-notes-selected] .note-layer-actions {
+  display: flex;
+}
+
+/* Compact length select in layer bar */
+.mini-length-select {
+  background: var(--bg-3, #3d1219);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--fg-1, #fff);
+  font-size: 0.7rem;
+  height: 26px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+/* Icon-only trash button in layer bar */
+.mini-button.icon-btn {
+  min-width: 26px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Note quick popup — appears inside melody-grid above selected note */
+.note-quick-popup {
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(28, 8, 12, 0.92);
+  border: 1px solid rgba(255, 176, 183, 0.3);
+  border-radius: 10px;
+  padding: 4px 5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: all;
+}
+
+.nqp-btn {
+  background: var(--bg-3, #3d1219);
+  border: none;
+  border-radius: 5px;
+  color: var(--fg-1, #fff);
+  font-size: 0.65rem;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+.nqp-btn:active {
+  background: var(--accent);
+}
+
+/* Armed state — amber tint */
+.nqp-btn.nqp-armed {
+  background: rgba(255, 195, 80, 0.22);
+  color: rgba(255, 214, 142, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 142, 0.4);
+}
+
+.nqp-btn.nqp-armed:active {
+  background: rgba(255, 195, 80, 0.45);
+}
+
+/* Trash button — subtle danger tint on hover/active */
+.nqp-btn.nqp-trash {
+  color: rgba(255, 140, 140, 0.75);
+}
+
+.nqp-btn.nqp-trash:active {
+  background: rgba(200, 50, 50, 0.4);
+  color: #fff;
+}
+
+.nqp-len {
+  background: var(--bg-3, #3d1219);
+  border: none;
+  border-radius: 5px;
+  color: var(--fg-1, #fff);
+  font-size: 0.65rem;
+  height: 22px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+/* ===== TRACKS VIEW ===== */
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .chord-palette-panel,
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .workspace-column-left,
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .workspace-column-right,
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .mode-panel {
+  display: none !important;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .top-shell {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] {
+  padding-top: var(--safe-top);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .app-shell {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .app-shell-inner {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .workspace {
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .editor-panel {
+  position: static;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border-top: none;
+  background: var(--bg-1);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .editor-surface {
+  flex: 1 1 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+/* Panel-head padding in tracks view */
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .panel-head {
+  padding: 6px 12px;
+}
+
+/* Sliders constrained to container width */
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] input[type="range"] {
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .meta-field {
+  min-width: 0;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* Tools toggle not needed in tracks view */
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] .melody-tools-toggle {
+  display: none !important;
+}
+
+/* ===== HEADER hidden: body padding fix ===== */
+/* Editor/tracks panels are position:fixed — body doesn't need overflow:hidden.
+   Use overscroll-behavior instead to prevent pull-to-refresh without breaking
+   screenshot tools or compositor layers. */
+body[data-layout-profile="iphone"][data-iphone-view="editor"],
+body[data-layout-profile="iphone"][data-iphone-view="tracks"] {
+  overscroll-behavior: none;
+}
+
+/* ===== IPAD LAYOUT ===== */
+body[data-layout-profile="ipad"] .app-shell {
+  width: min(960px, 100%);
+}
+
+body[data-layout-profile="ipad"] .top-shell {
+  border-radius: 24px;
+  padding: 14px 18px 12px;
+}
+
+body[data-layout-profile="ipad"] .meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body[data-layout-profile="ipad"] .workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+body[data-layout-profile="ipad"] .editor-panel,
+body[data-layout-profile="ipad"] .chord-palette-panel {
+  grid-column: 1 / -1;
+}
+
+body[data-layout-profile="ipad"] .workspace-column-left {
+  grid-column: 1 / 2;
+}
+
+body[data-layout-profile="ipad"] .workspace-column-right {
+  grid-column: 2 / 3;
+}
+
+body[data-layout-profile="ipad"] .mode-panel {
+  grid-column: 1 / -1;
+}
+
+/* iPad dialogs: centered card, not full-screen bottom sheet */
+body[data-layout-profile="ipad"] .dialog-overlay {
+  align-items: center;
+  padding: 24px;
+}
+
+body[data-layout-profile="ipad"] .dialog-card {
+  width: min(560px, 90%);
+  max-height: min(720px, calc(100dvh - 80px));
+  border-radius: 24px;
+  padding: 20px;
+}
+
+/* iPad grid scroll: taller viewport */
+body[data-layout-profile="ipad"] .grid-scroll {
+  max-height: 65vh;
+}
+
+/* iPad bottom bar: floating pill style */
+body[data-layout-profile="ipad"] .bottom-bar {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  bottom: calc(8px + var(--safe-bottom));
+  width: min(680px, calc(100% - 32px));
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(53, 24, 30, 0.94);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  padding: 8px 18px;
+  gap: 10px;
+}
+
+/* iPad panels: slightly more padding */
+body[data-layout-profile="ipad"] .panel {
+  padding: 18px;
+  border-radius: 22px;
+}
+
+/* iPad melody toolbar: horizontal row, not cramped grid */
+body[data-layout-profile="ipad"] .melody-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* iPad note strip slot: enough room */
+body[data-layout-profile="ipad"] .melody-note-strip-slot {
+  min-height: 200px;
+}
+
+/* ===== MAC LAYOUT ===== */
+body[data-layout-profile="mac"] .app-shell {
+  width: min(1320px, 100%);
+}
+
+body[data-layout-profile="mac"] .top-shell {
+  border-radius: 24px;
+  padding: 14px 20px 12px;
+}
+
+body[data-layout-profile="mac"] .meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body[data-layout-profile="mac"] .workspace {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+body[data-layout-profile="mac"] .editor-panel,
+body[data-layout-profile="mac"] .chord-palette-panel {
+  grid-column: 1 / -1;
+}
+
+body[data-layout-profile="mac"] .workspace-column-left {
+  grid-column: 1 / 2;
+}
+
+body[data-layout-profile="mac"] .workspace-column-right {
+  grid-column: 2 / 3;
+}
+
+body[data-layout-profile="mac"] .mode-panel {
+  grid-column: 1 / -1;
+}
+
+/* Mac dialogs: centered, wider card */
+body[data-layout-profile="mac"] .dialog-overlay {
+  align-items: center;
+  padding: 32px;
+}
+
+body[data-layout-profile="mac"] .dialog-card {
+  width: min(620px, 90%);
+  max-height: min(760px, calc(100dvh - 100px));
+  border-radius: 24px;
+  padding: 24px;
+}
+
+/* Mac grid scroll: generous height */
+body[data-layout-profile="mac"] .melody-shell {
+  max-height: 64vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  align-items: start;
+}
+
+body[data-layout-profile="mac"] .grid-scroll {
+  max-height: none;
+  height: auto;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+body[data-layout-profile="mac"] .pitch-rail {
+  overflow: hidden;
+}
+
+/* Mac bottom bar: floating pill, wider */
+body[data-layout-profile="mac"] .bottom-bar {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  bottom: calc(12px + var(--safe-bottom));
+  width: min(780px, calc(100% - 48px));
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(53, 24, 30, 0.94);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.32);
+  padding: 10px 20px;
+  gap: 12px;
+}
+
+/* Mac panels: roomier */
+body[data-layout-profile="mac"] .panel {
+  padding: 20px;
+  border-radius: 24px;
+}
+
+/* Mac melody toolbar: spacious horizontal layout */
+body[data-layout-profile="mac"] .melody-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Mac note strip slot */
+body[data-layout-profile="mac"] .melody-note-strip-slot {
+  min-height: 0;
+}
+
+body[data-layout-profile="mac"] .melody-note-strip-slot > .melody-note-strip {
+  height: auto;
+  min-height: 112px;
+}
+
+body[data-layout-profile="mac"] .melody-note-strip-slot > .melody-note-strip.melody-note-strip-empty {
+  min-height: 64px;
+}
+
+/* Mac: bigger transport buttons */
+body[data-layout-profile="mac"] .bottom-bar .transport-button {
+  min-height: 40px;
+  padding: 8px 16px;
+}
+
+body[data-layout-profile="mac"] .bottom-bar .transport-button.primary {
+  min-width: 48px;
+  min-height: 42px;
+}
+
+body[data-layout-profile="mac"] .bottom-bar .transport-status {
+  font-size: 0.84rem;
+  padding: 6px 14px;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheetRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 768px) {
+  @keyframes sheetRise {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+}
