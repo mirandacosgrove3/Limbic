@@ -98,6 +98,22 @@ export function normalizeNoteName(note) {
   return NOTE_ALIASES[note] || note;
 }
 
+/**
+ * Returns true if every tone produced by the chord (root + quality + extension)
+ * falls within the given key/scale.
+ */
+export function isChordInKey(chord, key = "C", scaleType = "major") {
+  if (!chord) {
+    return false;
+  }
+  const rootIndex = getNoteIndex(chord.root);
+  const intervals = getChordIntervals(chord);
+  const scaleIntervals = new Set((SCALE_INTERVALS[scaleType] || SCALE_INTERVALS.major).map(
+    (interval) => (getNoteIndex(key) + interval) % 12,
+  ));
+  return intervals.every((interval) => scaleIntervals.has((rootIndex + interval) % 12));
+}
+
 export function formatNoteName(note, options = {}) {
   const normalized = normalizeNoteName(note);
   const accidentalPreference = options.accidentalPreference || "sharps";
@@ -229,6 +245,9 @@ function defaultExtensionForDegree(roman) {
 }
 
 export function getChordDisplayName(chord) {
+  if (!chord) {
+    return "";
+  }
   const root = normalizeNoteName(chord.root);
   const quality =
     chord.quality === "minor"
@@ -247,6 +266,9 @@ export function getChordDisplayName(chord) {
 }
 
 export function getChordIntervals(chord) {
+  if (!chord) {
+    return [];
+  }
   if (chord.extension === "sus2") {
     return [0, 2, 7];
   }
@@ -258,11 +280,17 @@ export function getChordIntervals(chord) {
 }
 
 export function getChordToneClasses(chord) {
+  if (!chord) {
+    return [];
+  }
   const rootIndex = getNoteIndex(chord.root);
   return getChordIntervals(chord).map((interval) => (rootIndex + interval) % 12);
 }
 
 export function chordToMidi(chord, baseOctave = 4) {
+  if (!chord) {
+    return [];
+  }
   const rootIndex = getNoteIndex(chord.root);
   const midiRoot = 12 * (baseOctave + 1) + rootIndex;
   const pitches = getChordIntervals(chord).map((interval) => midiRoot + interval);
@@ -281,6 +309,9 @@ function romanToCandidate(roman, palette) {
 }
 
 export function matchChordToRoman(chord, key = "C", scaleType = "major") {
+  if (!chord) {
+    return null;
+  }
   const palette = [...getDiatonicChords(key, scaleType), ...getBorrowedChords(key, scaleType)];
   return (
     palette.find(
@@ -290,6 +321,32 @@ export function matchChordToRoman(chord, key = "C", scaleType = "major") {
         (candidate.extension === chord.extension || !candidate.extension),
     )?.roman || null
   );
+}
+
+const FUNCTION_CATEGORIES = {
+  I: "tonic", i: "tonic", iii: "tonic", III: "tonic", vi: "tonic", VI: "tonic",
+  bIII: "tonic", bVI: "tonic",
+  ii: "predominant", IV: "predominant", iv: "predominant",
+  V: "dominant", v: "dominant", VII: "dominant", bVII: "dominant",
+  "vii°": "diminished", "ii°": "diminished", "vi°": "diminished", "iii°": "diminished",
+};
+
+export function getChordFunctionCategory(roman = "") {
+  if (!roman) return "color";
+  return FUNCTION_CATEGORIES[roman] || "color";
+}
+
+export function getFilledChords(progression = []) {
+  return progression.filter(Boolean);
+}
+
+export function getLastFilledChord(progression = []) {
+  for (let index = progression.length - 1; index >= 0; index -= 1) {
+    if (progression[index]) {
+      return progression[index];
+    }
+  }
+  return null;
 }
 
 export function describeRomanFunction(roman = "") {
@@ -325,7 +382,12 @@ export function suggestNextChords({
 
   const circleTarget = transposeNote(previousChord.root, 7);
   const circleMove = palette.find((candidate) => candidate.root === circleTarget);
-  const historyRoots = new Set(progressionHistory.slice(-3).map((chord) => chord.root));
+  const historyRoots = new Set(
+    progressionHistory
+      .filter(Boolean)
+      .slice(-3)
+      .map((chord) => chord.root),
+  );
 
   const suggestions = primaryMoves
     .map((move) => romanToCandidate(move, palette))
@@ -367,14 +429,83 @@ export function snapPitchToScale(pitch, key = "C", scaleType = "major") {
   return nearestScalePitch(pitch, scaleClasses);
 }
 
+export function buildChordGridTimeline(section, song) {
+  const beatsPerBar = getBeatsPerBar(song);
+  const sectionBeats = section.lengthInBars * beatsPerBar;
+  const progression = section.chordProgression || [];
+  const timeline = [];
+  const slotSizeInBeats = section.gridResolution === "beat" ? 1 : beatsPerBar;
+
+  for (let slotIndex = 0; slotIndex < progression.length; slotIndex += 1) {
+    const chord = progression[slotIndex];
+    if (!chord) {
+      continue;
+    }
+
+    const startBeat = slotIndex * slotSizeInBeats;
+    if (startBeat >= sectionBeats) {
+      continue;
+    }
+    const requestedDuration = Math.max(1, chord.durationInBeats || beatsPerBar);
+    let endBeat = Math.min(sectionBeats, startBeat + requestedDuration);
+
+    for (let nextSlotIndex = slotIndex + 1; nextSlotIndex < progression.length; nextSlotIndex += 1) {
+      if (progression[nextSlotIndex]) {
+        endBeat = Math.min(endBeat, nextSlotIndex * slotSizeInBeats);
+        break;
+      }
+    }
+
+    timeline.push({
+      chord,
+      index: slotIndex,
+      startBeat,
+      endBeat: Math.max(startBeat + 1, endBeat),
+    });
+  }
+
+  return timeline;
+}
+
 export function getChordAtBeat(section, beat, song) {
   const beatsPerBar = getBeatsPerBar(song);
   const sectionEndBeat = section.lengthInBars * beatsPerBar;
   const targetBeat = Math.max(0, Math.min(beat, sectionEndBeat - 0.001));
 
+  if (section.chordLayout === "grid") {
+    const timeline = buildChordGridTimeline(section, song);
+    const activeEvent = timeline.find((event) => targetBeat >= event.startBeat && targetBeat < event.endBeat);
+    if (activeEvent) {
+      return {
+        chord: activeEvent.chord,
+        index: activeEvent.index,
+        startBeat: activeEvent.startBeat,
+        endBeat: activeEvent.endBeat,
+      };
+    }
+    const slotSizeInBeats = section.gridResolution === "beat" ? 1 : beatsPerBar;
+    const slotIndex = Math.max(
+      0,
+      Math.min(
+        Math.max(0, section.chordProgression.length - 1),
+        Math.floor(targetBeat / slotSizeInBeats),
+      ),
+    );
+    return {
+      chord: section.chordProgression[slotIndex] || null,
+      index: slotIndex,
+      startBeat: slotIndex * slotSizeInBeats,
+      endBeat: Math.min((slotIndex + 1) * slotSizeInBeats, sectionEndBeat),
+    };
+  }
+
   let cursor = 0;
   for (let index = 0; index < section.chordProgression.length; index += 1) {
     const chord = section.chordProgression[index];
+    if (!chord) {
+      cursor += beatsPerBar;
+      continue;
+    }
     const nextCursor = cursor + chord.durationInBeats;
     if (targetBeat < nextCursor || index === section.chordProgression.length - 1) {
       return {
@@ -387,11 +518,12 @@ export function getChordAtBeat(section, beat, song) {
     cursor = nextCursor;
   }
 
+  const firstChordIndex = section.chordProgression.findIndex(Boolean);
   return {
-    chord: section.chordProgression[0],
-    index: 0,
+    chord: getLastFilledChord(section.chordProgression),
+    index: firstChordIndex === -1 ? 0 : firstChordIndex,
     startBeat: 0,
-    endBeat: section.chordProgression[0]?.durationInBeats || beatsPerBar,
+    endBeat: getLastFilledChord(section.chordProgression)?.durationInBeats || beatsPerBar,
   };
 }
 
@@ -455,6 +587,9 @@ export function autoSuggestChords(melodyNotes, song, barCount = null) {
 }
 
 export function transposeChord(chord, interval) {
+  if (!chord) {
+    return null;
+  }
   return {
     ...chord,
     root: transposeNote(chord.root, interval),

@@ -49,12 +49,16 @@ export function getDrumPatternBars(section, sequence) {
   const rawPatternBars = Number(sequence?.patternBars);
   const normalizedPatternBars = Number.isFinite(rawPatternBars) && rawPatternBars > 0
     ? Math.round(rawPatternBars * 2) / 2
-    : sectionBars;
+    : 1;
   return Math.max(0.5, Math.min(sectionBars, normalizedPatternBars));
 }
 
 export function createChord(overrides = {}) {
-  const duration = overrides.durationBeats ?? overrides.durationInBeats ?? 4;
+  if (overrides === null) {
+    return null;
+  }
+  const safeOverrides = overrides ?? {};
+  const duration = safeOverrides.durationBeats ?? safeOverrides.durationInBeats ?? 4;
   return {
     id: createId("chord"),
     root: "C",
@@ -65,9 +69,9 @@ export function createChord(overrides = {}) {
     slashBass: "",
     durationInBeats: duration,
     durationBeats: duration,
-    startBar: overrides.startBar ?? 0,
-    startBeat: overrides.startBeat ?? 0,
-    ...overrides,
+    startBar: safeOverrides.startBar ?? 0,
+    startBeat: safeOverrides.startBeat ?? 0,
+    ...safeOverrides,
   };
 }
 
@@ -138,6 +142,7 @@ export function createSection(overrides = {}) {
     localMeter: overrides.localMeter,
     variationOf: overrides.variationOf ?? null,
     intensityTag: overrides.intensityTag ?? "medium",
+    chordLayout: overrides.chordLayout ?? "timeline",
     chordProgression: [],
     chords: overrides.chords ?? overrides.chordProgression ?? [],
     melodyNotes: [],
@@ -218,11 +223,12 @@ export function sanitizeSong(song) {
     type: section.type ?? normalizeSectionType(section.name ?? section.label ?? "Verse"),
     bars: section.bars ?? section.lengthInBars ?? 4,
     lengthInBars: section.lengthInBars ?? section.bars ?? 4,
+    chordLayout: section.chordLayout ?? "timeline",
     chordProgression: (section.chordProgression || []).map((chord) =>
-      createChord(ensureChordRootFormat(chord)),
+      chord ? createChord(ensureChordRootFormat(chord)) : null,
     ),
     chords: (section.chords || section.chordProgression || []).map((chord) =>
-      createChord(ensureChordRootFormat(chord)),
+      chord ? createChord(ensureChordRootFormat(chord)) : null,
     ),
     melodyNotes: (section.melodyNotes || []).map((note) => createNote(note)),
     melody: (section.melody || section.melodyNotes || []).map((note) => createNote(note)),

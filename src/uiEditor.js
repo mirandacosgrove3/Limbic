@@ -25,9 +25,13 @@ import {
   getBorrowedChords,
   getChordAtBeat,
   getChordDisplayName,
+  getChordFunctionCategory,
+  getFilledChords,
+  getLastFilledChord,
   getChordToneClasses,
   getDiatonicChords,
   getNoteIndex,
+  isChordInKey,
   getScaleNotes,
   matchChordToRoman,
   snapPitchToScale,
@@ -73,6 +77,18 @@ const CHORD_QUALITIES = [
   ["diminished", "Diminished"],
   ["augmented", "Augmented"],
 ];
+const SCALE_TYPE_OPTIONS = [
+  ["major", "Major"],
+  ["minor", "Minor"],
+  ["dorian", "Dorian"],
+  ["mixolydian", "Mixolydian"],
+];
+const SCALE_TYPE_SHORT_LABELS = {
+  major: "Maj",
+  minor: "Min",
+  dorian: "Dor",
+  mixolydian: "Mix",
+};
 const SECTION_TEMPLATES = {
   "Verse / Chorus": ["Verse", "Chorus", "Verse", "Chorus", "Bridge", "Chorus"],
   "Pop Arc": ["Intro", "Verse", "PreChorus", "Chorus", "Verse", "PreChorus", "Chorus", "Bridge", "Chorus", "Outro"],
@@ -81,11 +97,13 @@ const SECTION_TEMPLATES = {
 };
 const SNAP_DIVISOR_OPTIONS = [2, 4, 8, 16, 32];
 const NOTE_LENGTH_DIVISOR_OPTIONS = [1, 2, 4, 8, 16, 32];
-const DEFAULT_RHYTHM_SNAP_DIVISOR = 4;
+const DEFAULT_RHYTHM_SNAP_DIVISOR = 16;
 const DEFAULT_QUANTIZE_DIVISOR = 16;
 const MIN_NOTE_DURATION_DIVISOR = 32;
 const DRUM_TIME_DIVISION_OPTIONS = [4, 8, 16, 32];
 const NOTE_MULTI_SELECT_HOLD_MS = 320;
+const NOTE_SELECT_ALL_HOLD_MS = 2500;
+const NOTE_SELECT_ALL_HOLD_MOVE_DISTANCE = 10;
 const NOTE_DRAG_START_DISTANCE = 8;
 const NOTE_GRID_SCROLL_CANCEL_DISTANCE = 3;
 const TOUCH_EDITOR_SCROLL_START_DISTANCE = 12;
@@ -179,10 +197,15 @@ function midiToLabel(midi, settings = {}) {
 }
 
 function progressionSummary(progression = []) {
-  if (!progression.length) {
+  const filledChords = progression.filter(Boolean);
+  if (!filledChords.length) {
     return "No chords yet";
   }
-  return progression.map((chord) => getChordDisplayName(chord)).join("  ");
+  return filledChords.map((chord) => getChordDisplayName(chord)).join("  ");
+}
+
+function countProgressionChords(progression = []) {
+  return progression.filter(Boolean).length;
 }
 
 function melodySummary(notes = []) {
@@ -243,6 +266,7 @@ export class UIEditor {
       selectedChordIndex: null,
       scaleSnap: true,
       rhythmSnapDivisor: DEFAULT_RHYTHM_SNAP_DIVISOR,
+      lastPlacedNoteDuration: 0,
       drumGridCellSize: null,
       melodyZoom: 1,
       noteGridSize: DEFAULT_NOTE_GRID_SIZE,
@@ -271,6 +295,12 @@ export class UIEditor {
       settingsDialogOpen: false,
       exportDialogOpen: false,
       tempoDialogOpen: false,
+      keyScaleDialogOpen: false,
+      /* Arrangement grid view state */
+      selectedBarIndex: null,
+      selectedBarSectionId: null,
+      arrangementPaletteVisible: false,
+      arrangementBarMenuSectionId: null,
     };
     this.constrainSongNotesToScale(this.state.song);
     this.state.activeSectionId = this.state.song.sections[0]?.id || null;
@@ -301,7 +331,11 @@ export class UIEditor {
     this.quickSelectState = null;
     this.editorScrollTouchState = null;
     this.tempoDialogDirty = false;
+    this.tempoDialogAnchorEl = null;
+    this.tempoDialogAnchorRect = null;
     this.tempoDialDrag = null;
+    this.keyScaleDialogAnchorEl = null;
+    this.keyScaleDialogAnchorRect = null;
     this.playback = new PlaybackEngine({
       onTick: (payload) => this.handlePlaybackTick(payload),
       onStateChange: (status) => this.handlePlaybackStateChange(status),
@@ -338,6 +372,11 @@ export class UIEditor {
       tempo: document.getElementById("song-tempo"),
       tempoReadout: document.getElementById("song-tempo-readout"),
       tempoLaunch: document.getElementById("tempo-launch"),
+      editorTempoLaunch: document.getElementById("editor-tempo-readout"),
+      editorKeyScaleLaunch: document.getElementById("editor-key-scale-launch"),
+      editorKeyScaleLabel: document.getElementById("editor-key-scale-label"),
+      arrangementTempoLaunch: document.getElementById("arr-tempo-readout"),
+      paletteTempoLaunch: document.getElementById("palette-tempo-launch"),
       playTransport: document.querySelector('[data-transport="play"]'),
       pauseTransport: document.querySelector('[data-transport="pause"]'),
       stopTransport: document.querySelector('[data-transport="stop"]'),
@@ -349,8 +388,10 @@ export class UIEditor {
       progressionRow: document.getElementById("progression-row"),
       chordInspector: document.getElementById("chord-inspector"),
       suggestionRow: document.getElementById("suggestion-row"),
+      paletteSuggestionRow: document.getElementById("palette-suggestion-row"),
       chordPalette: document.getElementById("chord-palette"),
       borrowedPalette: document.getElementById("borrowed-palette"),
+      chordPlayerStatus: document.getElementById("chord-player-status"),
       paletteModeSwitch: document.getElementById("palette-mode-switch"),
       pianoVisualizer: document.getElementById("piano-visualizer"),
       paletteKeyLabel: document.getElementById("palette-key-label"),
@@ -362,6 +403,8 @@ export class UIEditor {
       exportDialogSurface: document.getElementById("export-dialog-surface"),
       tempoDialog: document.getElementById("tempo-dialog"),
       tempoDialogSurface: document.getElementById("tempo-dialog-surface"),
+      keyScaleDialog: document.getElementById("key-scale-dialog"),
+      keyScaleDialogSurface: document.getElementById("key-scale-dialog-surface"),
       settingsDialog: document.getElementById("settings-dialog"),
       settingsDialogSurface: document.getElementById("settings-dialog-surface"),
       editorSurface: document.getElementById("editor-surface"),
@@ -369,6 +412,12 @@ export class UIEditor {
       editorSectionTitle: document.getElementById("editor-section-title"),
       browserPill: document.getElementById("browser-pill"),
       layoutStatus: document.getElementById("layout-status"),
+      chordPalettePanel: this.root.querySelector(".chord-palette-panel"),
+      /* Arrangement grid view refs */
+      arrangementView: document.getElementById("arrangement-view"),
+      arrangementSections: document.getElementById("arrangement-sections"),
+      arrangementZoomBanner: document.getElementById("arrangement-zoom-banner"),
+      arrangementKeyLabel: document.getElementById("arrangement-key-label"),
     };
   }
 
@@ -403,13 +452,7 @@ export class UIEditor {
     }
 
     this.refs.key.addEventListener("change", (event) => this.handleSongKeyChange(event.target.value));
-    this.refs.scale.addEventListener("change", (event) => {
-      this.state.song.scaleType = event.target.value;
-      this.constrainSongNotesToScale(this.state.song);
-      this.state.generator.key = this.state.song.key;
-      this.persistSong();
-      this.renderAll();
-    });
+    this.refs.scale.addEventListener("change", (event) => this.handleSongScaleChange(event.target.value));
     this.refs.tempo.addEventListener("input", (event) => {
       this.updateTempoValue(event.target.value, { persist: false });
     });
@@ -418,7 +461,21 @@ export class UIEditor {
     });
     this.refs.tempoLaunch?.addEventListener("click", (event) => {
       event.preventDefault();
-      this.openTempoDialog();
+      this.openTempoDialog(event.currentTarget);
+    });
+    [
+      this.refs.editorTempoLaunch,
+      this.refs.arrangementTempoLaunch,
+      this.refs.paletteTempoLaunch,
+    ].forEach((button) => {
+      button?.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.openTempoDialog(event.currentTarget);
+      });
+    });
+    this.refs.editorKeyScaleLaunch?.addEventListener("click", (event) => {
+      event.preventDefault();
+      this.openKeyScaleDialog(event.currentTarget);
     });
     this.root.querySelectorAll("[data-tempo-step]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -468,6 +525,14 @@ export class UIEditor {
         quality: this.state.song.scaleType === "minor" ? "minor" : "major",
         durationInBeats: getBeatsPerBar(this.state.song),
       });
+      if (this.state.selectedBarIndex !== null && this.state.selectedBarSectionId === section.id) {
+        this.placeChordInArrangementBar(section, this.state.selectedBarIndex, chord);
+        this.persistSong();
+        this.auditionChord(chord);
+        this.refreshHarmonyViews();
+        this.renderPianoVisualizer(chord);
+        return;
+      }
       section.chordProgression.push(chord);
       this.state.selectedChordIndex = section.chordProgression.length - 1;
       this.persistSong();
@@ -511,6 +576,8 @@ export class UIEditor {
         }
         this.closeExportDialog({ render: false });
         this.closeSettingsDialog({ render: false });
+        this.closeTempoDialog();
+        this.closeKeyScaleDialog();
         this.state.workspaceMode = button.dataset.workspaceMode;
         this.renderWorkspaceModeButtons();
         this.renderModeSurface();
@@ -530,6 +597,7 @@ export class UIEditor {
     this.refs.chordInspector.addEventListener("click", (event) => this.handleChordInspectorClick(event));
     this.refs.chordInspector.addEventListener("change", (event) => this.handleChordInspectorChange(event));
     this.refs.suggestionRow.addEventListener("click", (event) => this.handleSuggestionClick(event));
+    this.refs.paletteSuggestionRow.addEventListener("click", (event) => this.handleSuggestionClick(event));
     this.refs.modeSurface.addEventListener("click", (event) => this.handleModeSurfaceClick(event));
     this.refs.modeSurface.addEventListener("input", (event) => this.handleModeSurfaceInput(event));
     this.refs.modeSurface.addEventListener("change", (event) => this.handleModeSurfaceChange(event));
@@ -537,6 +605,8 @@ export class UIEditor {
     this.refs.exportDialog?.addEventListener("click", (event) => this.handleExportDialogClick(event));
     this.refs.tempoDialog?.addEventListener("click", (event) => this.handleTempoDialogClick(event));
     this.refs.tempoDialog?.addEventListener("pointerdown", (event) => this.handleTempoDialogPointerDown(event));
+    this.refs.keyScaleDialog?.addEventListener("click", (event) => this.handleKeyScaleDialogClick(event));
+    this.refs.keyScaleDialog?.addEventListener("change", (event) => this.handleKeyScaleDialogChange(event));
     this.refs.settingsDialog.addEventListener("click", (event) => this.handleSettingsDialogClick(event));
 
     this.root.addEventListener("dragstart", (event) => this.handleDragStart(event));
@@ -568,14 +638,33 @@ export class UIEditor {
     this.refs.chordPalette.addEventListener("gesturestart", (event) => this.handlePaletteBrowserGesture(event), { passive: false });
     this.refs.chordPalette.addEventListener("gesturechange", (event) => this.handlePaletteBrowserGesture(event), { passive: false });
     this.refs.chordPalette.addEventListener("gestureend", (event) => this.handlePaletteBrowserGesture(event), { passive: false });
+
+    /* Arrangement grid view listeners */
+    if (this.refs.arrangementView) {
+      this.refs.arrangementView.addEventListener("click", (event) => this.handleArrangementClick(event));
+    }
   }
 
   // ===== CHORD AUDITION =====
 
-  auditionChord(chord, durationSeconds = 0.6) {
+  getChordPreviewDurationSeconds(chord, fallbackDurationSeconds = 1.2) {
+    const beats = Math.max(
+      1,
+      Number.parseFloat(chord?.durationInBeats ?? chord?.durationBeats ?? getBeatsPerBar(this.state.song)),
+    );
+    const secondsPerBeat = 60 / clamp(this.state.song?.tempo || 108, 50, 200);
+    return clamp(
+      beats * secondsPerBeat + 0.34,
+      1.28,
+      Math.max(1.28, fallbackDurationSeconds, 2.9),
+    );
+  }
+
+  auditionChord(chord, durationSeconds = this.getChordPreviewDurationSeconds(chord)) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
-    pulsePlaybackAudioMode("preview", Math.ceil((durationSeconds + 0.18) * 1000));
+    const previewDurationSeconds = this.getChordPreviewDurationSeconds(chord, durationSeconds);
+    pulsePlaybackAudioMode("preview", Math.ceil((previewDurationSeconds + 0.26) * 1000));
     if (!this.previewContext) {
       this.previewContext = new AudioContextClass();
     }
@@ -603,11 +692,20 @@ export class UIEditor {
       gain.connect(this.previewContext.destination);
 
       const staggered = now + i * 0.012;
+      const attackTime = 0.022;
+      const settleTime = 0.08;
+      const releaseTime = clamp(previewDurationSeconds * 0.28, 0.2, 0.42);
+      const releaseStart = Math.max(
+        staggered + attackTime + settleTime,
+        staggered + previewDurationSeconds - releaseTime,
+      );
       gain.gain.setValueAtTime(0.0001, staggered);
-      gain.gain.linearRampToValueAtTime(0.08, staggered + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, staggered + durationSeconds);
+      gain.gain.linearRampToValueAtTime(0.1, staggered + attackTime);
+      gain.gain.linearRampToValueAtTime(0.072, staggered + attackTime + settleTime);
+      gain.gain.setValueAtTime(0.072, releaseStart);
+      gain.gain.exponentialRampToValueAtTime(0.0001, releaseStart + releaseTime);
       oscillator.start(staggered);
-      oscillator.stop(staggered + durationSeconds + 0.05);
+      oscillator.stop(releaseStart + releaseTime + 0.05);
     });
   }
 
@@ -672,6 +770,7 @@ export class UIEditor {
 
   renderChordPalette() {
     this.renderPaletteModeSwitch();
+    this.syncChordPalettePanelMode();
     if (this.state.paletteMode === "drums") {
       this.renderDrumPalette();
       return;
@@ -679,27 +778,91 @@ export class UIEditor {
 
     const diatonic = getDiatonicChords(this.state.song.key, this.state.song.scaleType);
     const borrowed = getBorrowedChords(this.state.song.key, this.state.song.scaleType);
+    const section = this.getActiveSection();
+    const isChordPlayerView = this.isIphoneChordPlayerView();
+    const selectedBarLabel = this.getActiveArrangementBarLabel(section);
+    const selectedBarChord =
+      selectedBarLabel && section?.chordProgression?.[this.state.selectedBarIndex]
+        ? section.chordProgression[this.state.selectedBarIndex]
+        : null;
+    const labelMap = {
+      tonic: "Tonic",
+      predominant: "Lift",
+      dominant: "Drive",
+      diminished: "Tension",
+      color: "Color",
+    };
 
-    this.refs.paletteKeyLabel.textContent = `${this.state.song.key} ${this.state.song.scaleType.charAt(0).toUpperCase() + this.state.song.scaleType.slice(1)}`;
+    this.refs.paletteKeyLabel.textContent = isChordPlayerView
+      ? selectedBarLabel
+        ? `${section.name} · ${selectedBarLabel}`
+        : `${section.name} · Select a bar`
+      : `${this.state.song.key} ${this.state.song.scaleType.charAt(0).toUpperCase() + this.state.song.scaleType.slice(1)}`;
     this.refs.borrowedPalette.classList.remove("hidden");
     this.refs.chordPalette.classList.remove("drum-mode");
 
-    this.refs.chordPalette.innerHTML = diatonic.map((chord) => `
-      <button class="palette-chip" data-palette-root="${chord.root}" data-palette-quality="${chord.quality}" data-palette-extension="${chord.extension || ""}">
-        ${escapeHtml(getChordDisplayName(chord))}
-        <span class="palette-roman">${escapeHtml(chord.roman)}</span>
-      </button>
-    `).join("");
+    if (this.refs.chordPlayerStatus) {
+      if (isChordPlayerView) {
+        this.refs.chordPlayerStatus.classList.remove("hidden");
+        this.refs.chordPlayerStatus.innerHTML = `
+          <div class="chord-player-status-pill ${selectedBarLabel ? "is-armed" : "is-idle"}">
+            ${selectedBarLabel ? `${escapeHtml(section.name)} · ${escapeHtml(selectedBarLabel)}` : "Select a bar"}
+          </div>
+        `;
+      } else {
+        this.refs.chordPlayerStatus.classList.add("hidden");
+        this.refs.chordPlayerStatus.innerHTML = "";
+      }
+    }
 
-    this.refs.borrowedPalette.innerHTML = `
-      <p class="subtle-label" style="width:100%;margin:0 0 4px">Borrowed</p>
-      ${borrowed.map((chord) => `
-        <button class="palette-chip borrowed" data-palette-root="${chord.root}" data-palette-quality="${chord.quality}" data-palette-extension="${chord.extension || ""}">
-          ${escapeHtml(getChordDisplayName(chord))}
-          <span class="palette-roman">${escapeHtml(chord.roman)}</span>
-        </button>
-      `).join("")}
-    `;
+    if (isChordPlayerView && !selectedBarLabel) {
+      this.refs.chordPalette.innerHTML = "";
+      this.refs.borrowedPalette.classList.add("hidden");
+      this.refs.borrowedPalette.innerHTML = "";
+      if (this.refs.paletteSuggestionRow) {
+        this.refs.paletteSuggestionRow.classList.add("hidden");
+        this.refs.paletteSuggestionRow.innerHTML = "";
+      }
+    } else if (isChordPlayerView) {
+      this.refs.chordPalette.innerHTML = this.renderPaletteGroups(diatonic, labelMap);
+      this.refs.borrowedPalette.innerHTML = borrowed.length
+        ? `
+          <section class="chord-player-group chord-player-group--color">
+            <p class="chord-player-group-label">Borrowed</p>
+            <div class="chord-player-grid">
+              ${borrowed
+                .map((chord) =>
+                  this.renderPaletteChipMarkup(chord, {
+                    tone: "color",
+                    roman: chord.roman || "Borrowed",
+                    borrowed: true,
+                  }))
+                .join("")}
+            </div>
+          </section>
+        `
+        : "";
+    } else {
+      this.refs.chordPalette.innerHTML = diatonic
+        .map((chord) =>
+          this.renderPaletteChipMarkup(chord, {
+            tone: getChordFunctionCategory(chord.roman),
+            roman: chord.roman,
+          }))
+        .join("");
+
+      this.refs.borrowedPalette.innerHTML = `
+        <p class="subtle-label" style="width:100%;margin:0 0 4px">Borrowed</p>
+        ${borrowed
+          .map((chord) =>
+            this.renderPaletteChipMarkup(chord, {
+              tone: "color",
+              roman: chord.roman,
+              borrowed: true,
+            }))
+          .join("")}
+      `;
+    }
 
     // Render piano with the last selected chord or first diatonic chord
     const selectedChord = this.getSelectedChord() || (diatonic[0] ? createChord(diatonic[0]) : null);
@@ -707,6 +870,7 @@ export class UIEditor {
   }
 
   renderDrumPalette() {
+    this.syncChordPalettePanelMode();
     const section = this.getActiveSection();
     this.ensureDrumSequenceSeeded(section, false);
     const sequence = section.drumSequence;
@@ -722,8 +886,16 @@ export class UIEditor {
 
     this.refs.paletteKeyLabel.textContent = `${section.name} Drum Sequencer`;
     this.refs.pianoVisualizer.innerHTML = "";
+    this.refs.chordPlayerStatus?.classList.add("hidden");
+    if (this.refs.chordPlayerStatus) {
+      this.refs.chordPlayerStatus.innerHTML = "";
+    }
     this.refs.borrowedPalette.classList.add("hidden");
     this.refs.borrowedPalette.innerHTML = "";
+    if (this.refs.paletteSuggestionRow) {
+      this.refs.paletteSuggestionRow.classList.add("hidden");
+      this.refs.paletteSuggestionRow.innerHTML = "";
+    }
     this.refs.chordPalette.classList.add("drum-mode");
 
     const rowMarkup = DRUM_SEQUENCE_ROWS.map((row) => `
@@ -1095,7 +1267,25 @@ export class UIEditor {
       durationInBeats: getBeatsPerBar(this.state.song),
     });
 
-    // Immediately add to progression (ChordButter tap-to-add)
+    // Arrangement mode: place at selected bar instead of appending
+    if (this.state.selectedBarIndex !== null && this.state.selectedBarSectionId !== null) {
+      const arrSection = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (arrSection && this.placeChordInArrangementBar(arrSection, this.state.selectedBarIndex, chord)) {
+        this.auditionChord(chord);
+        this.persistSong();
+        this.refreshHarmonyViews();
+        this.renderPianoVisualizer(chord);
+        return;
+      }
+    }
+
+    if (this.isIphoneChordPlayerView() && section?.chordLayout === "grid") {
+      this.auditionChord(chord);
+      this.renderPianoVisualizer(chord);
+      return;
+    }
+
+    // Default: Immediately add to progression (ChordButter tap-to-add)
     section.chordProgression.push(chord);
     this.state.selectedChordIndex = section.chordProgression.length - 1;
 
@@ -1433,8 +1623,16 @@ export class UIEditor {
       this.state.activeTab = "melody";
     }
     this.applyIphoneView();
+    this.syncChordPalettePanelMode();
     this.renderTabs();
     this.renderEditor();
+    // Render arrangement grid when switching to chords view
+    if (view === "chords") {
+      this.renderChordPalette();
+      this.renderSuggestions();
+      this.renderChordInspector();
+      this.renderArrangementGrid();
+    }
   }
 
   applyIphoneView() {
@@ -1446,6 +1644,10 @@ export class UIEditor {
     this.root.querySelectorAll(".iphone-view-tab").forEach((tab) => {
       tab.classList.toggle("active", tab.dataset.iphoneView === this.state.iphoneView);
     });
+    // Show/hide arrangement view for chords tab
+    if (this.refs.arrangementView) {
+      this.refs.arrangementView.classList.toggle("hidden", this.state.iphoneView !== "chords");
+    }
   }
 
   handleViewportResize() {
@@ -1457,11 +1659,24 @@ export class UIEditor {
       previous.beatWidth === next.beatWidth &&
       previous.rowHeight === next.rowHeight &&
       previousLayoutProfile === this.layoutProfile
-    ) return;
+    ) {
+      if (this.state.tempoDialogOpen) {
+        this.renderTempoDialog();
+      }
+      if (this.state.keyScaleDialogOpen) {
+        this.renderKeyScaleDialog();
+      }
+      return;
+    }
     this.renderAll();
   }
 
   async handleGlobalKeydown(event) {
+    if (event.key === "Escape" && this.state.keyScaleDialogOpen) {
+      event.preventDefault();
+      this.closeKeyScaleDialog();
+      return;
+    }
     if (event.key === "Escape" && this.state.settingsDialogOpen) {
       event.preventDefault();
       this.closeSettingsDialog();
@@ -1549,6 +1764,10 @@ export class UIEditor {
       this.state.song = sanitizeSong(this.state.song);
     }
 
+    this.state.song.sections.forEach((section) => {
+      this.ensureArrangementGridResolution(section);
+    });
+
     const activeSection =
       this.state.song.sections.find((section) => section.id === this.state.activeSectionId)
       || this.state.song.sections[0]
@@ -1579,6 +1798,27 @@ export class UIEditor {
     ) {
       this.state.selectedChordIndex = chordCount ? clamp(this.state.selectedChordIndex ?? 0, 0, chordCount - 1) : null;
     }
+
+    const selectedBarSection =
+      this.state.song.sections.find((section) => section.id === this.state.selectedBarSectionId) || null;
+    if (!selectedBarSection) {
+      this.state.selectedBarIndex = null;
+      this.state.selectedBarSectionId = null;
+    } else {
+      const displayBeatCount = this.getArrangementDisplayBeatCount(selectedBarSection);
+      if (
+        !Number.isInteger(this.state.selectedBarIndex)
+        || this.state.selectedBarIndex < 0
+        || this.state.selectedBarIndex >= displayBeatCount
+      ) {
+        this.state.selectedBarIndex = null;
+        this.state.selectedBarSectionId = null;
+      }
+    }
+
+    if (!this.state.song.sections.some((section) => section.id === this.state.arrangementBarMenuSectionId)) {
+      this.state.arrangementBarMenuSectionId = null;
+    }
   }
 
   captureHistoryEntry() {
@@ -1592,6 +1832,8 @@ export class UIEditor {
       selectedNoteIds: [...(this.state.selectedNoteIds || [])],
       noteMultiSelectActive: Boolean(this.state.noteMultiSelectActive),
       selectedChordIndex: this.state.selectedChordIndex,
+      selectedBarIndex: this.state.selectedBarIndex,
+      selectedBarSectionId: this.state.selectedBarSectionId,
     };
   }
 
@@ -1607,6 +1849,18 @@ export class UIEditor {
     this.state.selectedNoteIds = [...(entry.selectedNoteIds || (entry.selectedNoteId ? [entry.selectedNoteId] : []))];
     this.state.noteMultiSelectActive = Boolean(entry.noteMultiSelectActive && this.state.selectedNoteIds.length);
     this.state.selectedChordIndex = entry.selectedChordIndex;
+    this.state.selectedBarSectionId = this.state.song.sections.some(
+      (section) => section.id === entry.selectedBarSectionId,
+    )
+      ? entry.selectedBarSectionId
+      : null;
+    this.state.selectedBarIndex =
+      this.state.selectedBarSectionId && Number.isInteger(entry.selectedBarIndex)
+        ? entry.selectedBarIndex
+        : null;
+    this.state.arrangementPaletteVisible = Boolean(
+      this.state.selectedBarSectionId && Number.isInteger(this.state.selectedBarIndex),
+    );
     this.playback.stop();
     this.persistSong({ recordHistory: false });
     this.renderAll();
@@ -1640,6 +1894,496 @@ export class UIEditor {
   getSelectedChord() {
     if (typeof this.state.selectedChordIndex !== "number") return null;
     return this.getActiveSection().chordProgression[this.state.selectedChordIndex] || null;
+  }
+
+  ensureArrangementGridResolution(section) {
+    if (!section || section.chordLayout !== "grid") {
+      return;
+    }
+
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+
+    if (section.gridResolution === "beat") {
+      section.gridVisibleBars = Math.max(
+        Number.isFinite(section.gridVisibleBars) ? Math.round(section.gridVisibleBars) : 0,
+        Number(section.lengthInBars) || 0,
+        Math.ceil((section.chordProgression?.length || 0) / beatsPerBar),
+      );
+      while (section.chordProgression.length < section.gridVisibleBars * beatsPerBar) {
+        section.chordProgression.push(null);
+      }
+      this.syncArrangementChordStartBeats(section);
+      return;
+    }
+
+    const originalProgression = Array.isArray(section.chordProgression) ? [...section.chordProgression] : [];
+    const visibleBars = Math.max(
+      Number.isFinite(section.gridVisibleBars) ? Math.round(section.gridVisibleBars) : 0,
+      Number(section.lengthInBars) || 0,
+      originalProgression.length,
+    );
+    const beatSlots = Array.from(
+      { length: Math.max(beatsPerBar, visibleBars * beatsPerBar) },
+      () => null,
+    );
+
+    originalProgression.forEach((chord, barIndex) => {
+      if (!chord) return;
+      const beatIndex = barIndex * beatsPerBar;
+      while (beatSlots.length <= beatIndex) {
+        beatSlots.push(null);
+      }
+      beatSlots[beatIndex] = createChord({
+        ...chord,
+        startBeat: beatIndex,
+        durationInBeats: Math.max(1, chord.durationInBeats || chord.durationBeats || beatsPerBar),
+        durationBeats: Math.max(1, chord.durationInBeats || chord.durationBeats || beatsPerBar),
+      });
+    });
+
+    section.chordProgression = beatSlots;
+    section.gridVisibleBars = Math.max(visibleBars, Math.ceil(beatSlots.length / beatsPerBar));
+    section.gridResolution = "beat";
+    this.syncArrangementChordStartBeats(section);
+  }
+
+  syncArrangementChordStartBeats(section) {
+    if (!section?.chordProgression) {
+      return;
+    }
+
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    section.chordProgression.forEach((chord, index) => {
+      if (!chord) return;
+      chord.startBeat = index;
+      chord.durationInBeats = Math.max(1, Math.round(chord.durationInBeats || chord.durationBeats || beatsPerBar));
+      chord.durationBeats = chord.durationInBeats;
+    });
+
+    if (section.chordLayout === "grid") {
+      section.gridVisibleBars = Math.max(
+        Number.isFinite(section.gridVisibleBars) ? Math.round(section.gridVisibleBars) : 0,
+        Number(section.lengthInBars) || 0,
+        Math.ceil(section.chordProgression.length / beatsPerBar),
+      );
+    }
+  }
+
+  getArrangementDisplayBarCount(section = this.getActiveSection()) {
+    if (!section) {
+      return 0;
+    }
+    if (section.chordLayout === "grid") {
+      this.ensureArrangementGridResolution(section);
+      const beatsPerBar = getBeatsPerBar(this.state.song);
+      return Math.max(
+        Number(section.lengthInBars) || 0,
+        Number(section.gridVisibleBars) || 0,
+        Math.ceil((section.chordProgression?.length || 0) / beatsPerBar),
+      );
+    }
+    return Math.max(section.lengthInBars || 0, section.chordProgression?.length || 0);
+  }
+
+  getArrangementDisplayBeatCount(section = this.getActiveSection()) {
+    return this.getArrangementDisplayBarCount(section) * getBeatsPerBar(this.state.song);
+  }
+
+  getArrangementPositionLabel(beatIndex) {
+    if (!Number.isInteger(beatIndex) || beatIndex < 0) {
+      return null;
+    }
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    const barNumber = Math.floor(beatIndex / beatsPerBar) + 1;
+    const beatInBar = (beatIndex % beatsPerBar) + 1;
+    return beatInBar === 1 ? `Bar ${barNumber}` : `Bar ${barNumber}.${beatInBar}`;
+  }
+
+  formatArrangementLengthLabel(length) {
+    if (!Number.isFinite(length) || length <= 0) {
+      return "1 Beat";
+    }
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    if (length === beatsPerBar * 2) {
+      return "2 Bars";
+    }
+    if (length === beatsPerBar) {
+      return "1 Bar";
+    }
+    return `${length} Beat${length === 1 ? "" : "s"}`;
+  }
+
+  buildArrangementDisplayTimeline(section) {
+    if (!section || section.chordLayout !== "grid") {
+      return [];
+    }
+    this.ensureArrangementGridResolution(section);
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    const displayBeats = this.getArrangementDisplayBeatCount(section);
+    const timeline = [];
+
+    for (let beatIndex = 0; beatIndex < Math.min(section.chordProgression.length, displayBeats); beatIndex += 1) {
+      const chord = section.chordProgression[beatIndex];
+      if (!chord) {
+        continue;
+      }
+
+      let endBeat = Math.min(
+        displayBeats,
+        beatIndex + Math.max(1, chord.durationInBeats || chord.durationBeats || beatsPerBar),
+      );
+      const nextFilledBeat = this.findNextFilledArrangementBeat(section, beatIndex);
+      if (nextFilledBeat !== null) {
+        endBeat = Math.min(endBeat, nextFilledBeat);
+      }
+
+      timeline.push({
+        chord,
+        index: beatIndex,
+        startBeat: beatIndex,
+        endBeat: Math.max(beatIndex + 1, endBeat),
+      });
+    }
+
+    return timeline;
+  }
+
+  findNextFilledArrangementBeat(section, beatIndex) {
+    if (!section || !Number.isInteger(beatIndex)) {
+      return null;
+    }
+    this.ensureArrangementGridResolution(section);
+    for (let index = beatIndex + 1; index < section.chordProgression.length; index += 1) {
+      if (section.chordProgression[index]) {
+        return index;
+      }
+    }
+    return null;
+  }
+
+  getArrangementMaxChordDuration(section, beatIndex) {
+    const nextFilledBeat = this.findNextFilledArrangementBeat(section, beatIndex);
+    return nextFilledBeat !== null ? Math.max(1, nextFilledBeat - beatIndex) : 32;
+  }
+
+  getArrangementEffectiveDuration(section, beatIndex, chord = section?.chordProgression?.[beatIndex]) {
+    if (!section || !chord) {
+      return 0;
+    }
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    return clamp(
+      Math.round(chord.durationInBeats || chord.durationBeats || beatsPerBar),
+      1,
+      this.getArrangementMaxChordDuration(section, beatIndex),
+    );
+  }
+
+  setArrangementChordDuration(section, beatIndex, duration) {
+    if (!section || !Number.isInteger(beatIndex) || beatIndex < 0) {
+      return null;
+    }
+    this.ensureArrangementGridResolution(section);
+    const chord = section.chordProgression[beatIndex];
+    if (!chord) {
+      return null;
+    }
+
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    const nextDuration = clamp(
+      Math.round(duration) || beatsPerBar,
+      1,
+      this.getArrangementMaxChordDuration(section, beatIndex),
+    );
+    this.ensureArrangementBarSlots(section, Math.ceil((beatIndex + nextDuration) / beatsPerBar));
+    section.chordProgression[beatIndex] = createChord({
+      ...chord,
+      startBeat: beatIndex,
+      durationInBeats: nextDuration,
+      durationBeats: nextDuration,
+    });
+    this.syncArrangementChordStartBeats(section);
+    return section.chordProgression[beatIndex];
+  }
+
+  splitArrangementChord(section, beatIndex) {
+    if (!section || !Number.isInteger(beatIndex) || beatIndex < 0) {
+      return null;
+    }
+    this.ensureArrangementGridResolution(section);
+    const chord = section.chordProgression[beatIndex];
+    if (!chord) {
+      return null;
+    }
+
+    const duration = this.getArrangementEffectiveDuration(section, beatIndex, chord);
+    if (duration <= 1) {
+      return null;
+    }
+
+    const firstDuration = Math.max(1, Math.floor(duration / 2));
+    const secondDuration = Math.max(1, duration - firstDuration);
+    const splitBeatIndex = beatIndex + firstDuration;
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+
+    this.ensureArrangementBarSlots(section, Math.ceil((splitBeatIndex + secondDuration) / beatsPerBar));
+    section.chordProgression[beatIndex] = createChord({
+      ...chord,
+      startBeat: beatIndex,
+      durationInBeats: firstDuration,
+      durationBeats: firstDuration,
+    });
+    section.chordProgression[splitBeatIndex] = createChord({
+      ...chord,
+      startBeat: splitBeatIndex,
+      durationInBeats: secondDuration,
+      durationBeats: secondDuration,
+    });
+    this.syncArrangementChordStartBeats(section);
+    return section.chordProgression[beatIndex];
+  }
+
+  mergeArrangementChordWithNext(section, beatIndex) {
+    if (!section || !Number.isInteger(beatIndex) || beatIndex < 0) {
+      return null;
+    }
+    this.ensureArrangementGridResolution(section);
+    const chord = section.chordProgression[beatIndex];
+    if (!chord) {
+      return null;
+    }
+
+    const currentDuration = this.getArrangementEffectiveDuration(section, beatIndex, chord);
+    const nextBeatIndex = this.findNextFilledArrangementBeat(section, beatIndex);
+    if (nextBeatIndex === null || nextBeatIndex !== beatIndex + currentDuration) {
+      return null;
+    }
+
+    const nextChord = section.chordProgression[nextBeatIndex];
+    if (!nextChord) {
+      return null;
+    }
+
+    const mergedDuration = currentDuration + this.getArrangementEffectiveDuration(section, nextBeatIndex, nextChord);
+    section.chordProgression[beatIndex] = createChord({
+      ...chord,
+      startBeat: beatIndex,
+      durationInBeats: mergedDuration,
+      durationBeats: mergedDuration,
+    });
+    section.chordProgression[nextBeatIndex] = null;
+    this.syncArrangementChordStartBeats(section);
+    return section.chordProgression[beatIndex];
+  }
+
+  duplicateArrangementChord(section, beatIndex) {
+    if (!section || !Number.isInteger(beatIndex) || beatIndex < 0) {
+      return null;
+    }
+    this.ensureArrangementGridResolution(section);
+    const chord = section.chordProgression[beatIndex];
+    if (!chord) {
+      return null;
+    }
+
+    const duration = this.getArrangementEffectiveDuration(section, beatIndex, chord);
+    const insertBeatIndex = beatIndex + duration;
+    section.chordProgression.splice(insertBeatIndex, 0, ...Array.from({ length: duration }, () => null));
+    section.chordProgression[insertBeatIndex] = createChord({
+      ...chord,
+      startBeat: insertBeatIndex,
+      durationInBeats: duration,
+      durationBeats: duration,
+    });
+    this.syncArrangementChordStartBeats(section);
+    return section.chordProgression[insertBeatIndex];
+  }
+
+  syncChordPalettePanelMode() {
+    if (!this.refs?.chordPalettePanel) {
+      return;
+    }
+    const isChordPlayerDock = this.isIphoneChordPlayerView() && this.state.paletteMode === "chords";
+    const isDrumDock = this.isIphoneChordPlayerView() && this.state.paletteMode === "drums";
+    const isCollapsedPlayer = isChordPlayerDock && !this.getActiveArrangementBarLabel(this.getActiveSection());
+    document.body.dataset.paletteMode = this.state.paletteMode;
+    this.refs.chordPalettePanel.classList.toggle("chord-palette-panel--player", isChordPlayerDock);
+    this.refs.chordPalettePanel.classList.toggle("chord-palette-panel--drums", isDrumDock);
+    this.refs.chordPalettePanel.classList.toggle("chord-palette-panel--collapsed", isCollapsedPlayer);
+    this.syncArrangementModeSwitch();
+  }
+
+  syncArrangementModeSwitch() {
+    const modeSwitch = document.getElementById("arr-mode-switch");
+    if (!modeSwitch) return;
+    modeSwitch.querySelectorAll(".arr-mode-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.mode === this.state.paletteMode);
+    });
+  }
+
+  countSectionChords(section = this.getActiveSection()) {
+    return countProgressionChords(section?.chordProgression || []);
+  }
+
+  ensureArrangementBarSlots(section, minSlotCount) {
+    if (!section) return;
+    section.chordLayout = "grid";
+    this.ensureArrangementGridResolution(section);
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    section.gridVisibleBars = Math.max(
+      Number(section.gridVisibleBars) || 0,
+      Number(section.lengthInBars) || 0,
+      Math.max(1, Math.ceil(minSlotCount)),
+    );
+    while (section.chordProgression.length < section.gridVisibleBars * beatsPerBar) {
+      section.chordProgression.push(null);
+    }
+  }
+
+  addArrangementVisibleBars(section, barCount = 4) {
+    if (!section) return;
+    this.ensureArrangementBarSlots(section, this.getArrangementDisplayBarCount(section) + barCount);
+  }
+
+  removeArrangementVisibleBars(section, barCount = 4) {
+    if (!section) return false;
+    section.chordLayout = "grid";
+    this.ensureArrangementGridResolution(section);
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    const minimumBars = Math.max(1, Number(section.lengthInBars) || 0);
+    const currentBars = this.getArrangementDisplayBarCount(section);
+    const nextBars = Math.max(minimumBars, currentBars - Math.max(1, Math.round(barCount)));
+    if (nextBars >= currentBars) {
+      return false;
+    }
+
+    const targetBeatCount = nextBars * beatsPerBar;
+    section.gridVisibleBars = nextBars;
+    section.chordProgression = section.chordProgression
+      .slice(0, targetBeatCount)
+      .map((chord, index) => {
+        if (!chord) return null;
+        const duration = clamp(
+          Math.round(chord.durationInBeats || chord.durationBeats || beatsPerBar),
+          1,
+          Math.max(1, targetBeatCount - index),
+        );
+        return createChord({
+          ...chord,
+          startBeat: index,
+          durationInBeats: duration,
+          durationBeats: duration,
+        });
+      });
+    this.syncArrangementChordStartBeats(section);
+
+    if (
+      this.state.selectedBarSectionId === section.id
+      && Number.isInteger(this.state.selectedBarIndex)
+      && this.state.selectedBarIndex >= targetBeatCount
+    ) {
+      this.state.selectedBarIndex = null;
+      this.state.selectedBarSectionId = null;
+      this.state.selectedChordIndex = null;
+      this.state.arrangementPaletteVisible = false;
+      this.state.arrangementBarMenuSectionId = null;
+    }
+
+    return true;
+  }
+
+  placeChordInArrangementBar(section, barIndex, chord, { advanceSelection = false } = {}) {
+    if (!section || !Number.isInteger(barIndex) || barIndex < 0 || !chord) {
+      return false;
+    }
+
+    const beatsPerBar = getBeatsPerBar(this.state.song);
+    const duration = Math.max(1, Math.round(chord.durationInBeats || chord.durationBeats || beatsPerBar));
+    this.ensureArrangementBarSlots(section, Math.ceil((barIndex + duration) / beatsPerBar));
+    section.chordProgression[barIndex] = createChord({
+      ...chord,
+      startBeat: barIndex,
+      durationInBeats: duration,
+      durationBeats: duration,
+    });
+    this.syncArrangementChordStartBeats(section);
+    this.state.activeSectionId = section.id;
+    this.state.selectedChordIndex = barIndex;
+    this.state.selectedBarSectionId = section.id;
+
+    if (advanceSelection) {
+      const nextBarIndex = barIndex + duration;
+      this.ensureArrangementBarSlots(section, Math.ceil((nextBarIndex + 1) / beatsPerBar));
+      this.state.selectedBarIndex = nextBarIndex;
+    } else {
+      this.state.selectedBarIndex = barIndex;
+    }
+
+    return true;
+  }
+
+  isIphoneChordPlayerView() {
+    return document.body?.dataset?.layoutProfile === "iphone" && this.state.iphoneView === "chords";
+  }
+
+  getActiveArrangementBarLabel(section = this.getActiveSection()) {
+    const isSelectedSection = this.state.selectedBarSectionId === section?.id;
+    if (!isSelectedSection || !Number.isInteger(this.state.selectedBarIndex)) {
+      return null;
+    }
+    return this.getArrangementPositionLabel(this.state.selectedBarIndex);
+  }
+
+  renderPaletteChipMarkup(chord, { tone = "color", roman = "", borrowed = false } = {}) {
+    const classes = [
+      "palette-chip",
+      tone ? `palette-chip--${tone}` : "",
+      this.isIphoneChordPlayerView() ? "palette-chip--player" : "",
+      borrowed ? "borrowed" : "",
+    ].filter(Boolean).join(" ");
+
+    return `
+      <button
+        class="${classes}"
+        data-palette-root="${chord.root}"
+        data-palette-quality="${chord.quality}"
+        data-palette-extension="${chord.extension || ""}"
+        ${tone ? `data-chord-function="${tone}"` : ""}
+      >
+        ${escapeHtml(getChordDisplayName(chord))}
+        <span class="palette-roman">${escapeHtml(roman)}</span>
+      </button>
+    `;
+  }
+
+  renderPaletteGroups(chords = [], labelMap = {}) {
+    const groups = [];
+
+    chords.forEach((chord) => {
+      const tone = getChordFunctionCategory(chord.roman);
+      const group = groups.find((entry) => entry.tone === tone);
+      if (group) {
+        group.chords.push(chord);
+      } else {
+        groups.push({ tone, chords: [chord] });
+      }
+    });
+
+    return groups
+      .map((group) => `
+        <section class="chord-player-group chord-player-group--${group.tone}">
+          <p class="chord-player-group-label">${escapeHtml(labelMap[group.tone] || group.tone)}</p>
+          <div class="chord-player-grid">
+            ${group.chords
+              .map((chord) =>
+                this.renderPaletteChipMarkup(chord, {
+                  tone: group.tone,
+                  roman: chord.roman,
+                }))
+              .join("")}
+          </div>
+        </section>
+      `)
+      .join("");
   }
 
   getSelectedNote() {
@@ -1700,6 +2444,10 @@ export class UIEditor {
     return Boolean(selectionKey && this.pendingNoteResizeSelectionKey === selectionKey);
   }
 
+  canResizeSelectedNotes(noteIds = this.getSelectedNoteIds()) {
+    return noteIds.length === 1;
+  }
+
   setSelectedNotes(noteIds = [], { primaryId = noteIds.at(-1) || null, multiSelect = noteIds.length > 1 } = {}) {
     const uniqueIds = [...new Set(noteIds.filter(Boolean))];
     const nextSelectionKey = this.getNoteSelectionKey(uniqueIds);
@@ -1716,6 +2464,27 @@ export class UIEditor {
 
   clearNoteSelection() {
     this.setSelectedNotes([], { primaryId: null, multiSelect: false });
+  }
+
+  areAllActiveNotesSelected(selectedIds = this.getSelectedNoteIds(), section = this.getActiveSection()) {
+    const allNoteIds = this.getActiveRollNotes(section).map((note) => note.id);
+    if (!allNoteIds.length) return false;
+    const selectedSet = new Set(selectedIds);
+    return allNoteIds.length === selectedSet.size && allNoteIds.every((noteId) => selectedSet.has(noteId));
+  }
+
+  toggleSelectAllActiveNotes({ shouldClear = this.areAllActiveNotesSelected() } = {}) {
+    const allNoteIds = this.getActiveRollNotes().map((note) => note.id);
+    this.noteQuickPopupEnabled = false;
+    if (shouldClear || !allNoteIds.length) {
+      this.clearNoteSelection();
+    } else {
+      this.setSelectedNotes(allNoteIds, {
+        primaryId: allNoteIds.at(-1) || null,
+        multiSelect: allNoteIds.length > 1,
+      });
+    }
+    this.renderMelodyEditor();
   }
 
   toggleNoteSelection(noteId) {
@@ -1762,6 +2531,11 @@ export class UIEditor {
     primaryId = noteIds.at(-1) || null,
     multiSelect = noteIds.length > 1,
   } = {}) {
+    if (!this.canResizeSelectedNotes(noteIds)) {
+      this.clearPendingNoteResizeDrag();
+      this.renderMelodyEditor();
+      return;
+    }
     const selectionKey = this.getNoteSelectionKey(noteIds);
     if (!selectionKey) return;
     this.setSelectedNotes(noteIds, { primaryId, multiSelect });
@@ -1786,17 +2560,21 @@ export class UIEditor {
     const totalBeats = sectionLengthInBeats(this.state.song, section);
     const stepBeats = this.getQuantizeStepBeats();
     const quantizedNotes = sortNotes(notes.map((note) => {
-      const duration = Math.max(stepBeats, Math.round(note.duration / stepBeats) * stepBeats);
+      // Snap start to nearest grid line
       const startBeat = clamp(
         Math.round(note.startBeat / stepBeats) * stepBeats,
         0,
-        Math.max(0, totalBeats - duration),
+        totalBeats - stepBeats,
       );
-      return {
-        ...note,
-        startBeat,
-        duration: clamp(duration, stepBeats, Math.max(stepBeats, totalBeats - startBeat)),
-      };
+      // Snap end to nearest grid line independently
+      const rawEnd = note.startBeat + note.duration;
+      const snappedEnd = Math.round(rawEnd / stepBeats) * stepBeats;
+      const duration = clamp(
+        Math.max(stepBeats, snappedEnd - startBeat),
+        stepBeats,
+        Math.max(stepBeats, totalBeats - startBeat),
+      );
+      return { ...note, startBeat, duration };
     }));
     this.setActiveRollNotes(quantizedNotes, section);
     this.persistSong();
@@ -1812,7 +2590,11 @@ export class UIEditor {
   }
 
   getDefaultMelodyStepDuration() {
-    return 1;
+    // Mimic last placed/selected note length, fallback to snap step
+    if (this.state.lastPlacedNoteDuration > 0) {
+      return this.state.lastPlacedNoteDuration;
+    }
+    return this.getRhythmSnapStepBeats();
   }
 
   getActiveRollNotes(section = this.getActiveSection()) {
@@ -1847,6 +2629,8 @@ export class UIEditor {
       this.ensureDrumSequenceSeeded(this.getActiveSection(), false);
     }
     this.state.paletteMode = mode;
+    this.applyIphoneView();
+    this.renderArrangementGrid();
     this.renderChordPalette();
   }
 
@@ -1964,6 +2748,14 @@ export class UIEditor {
     this.renderAll();
   }
 
+  handleSongScaleChange(nextScaleType) {
+    this.state.song.scaleType = nextScaleType;
+    this.constrainSongNotesToScale(this.state.song);
+    this.state.generator.key = this.state.song.key;
+    this.persistSong();
+    this.renderAll();
+  }
+
   getSongSettings() {
     return this.state.song.settings || {};
   }
@@ -2063,14 +2855,18 @@ export class UIEditor {
 
   buildSuggestionGroups() {
     const section = this.getActiveSection();
-    const previousChord =
-      section.chordProgression[this.state.selectedChordIndex ?? section.chordProgression.length - 1] || null;
+    const selectedChord =
+      typeof this.state.selectedChordIndex === "number"
+        ? section.chordProgression[this.state.selectedChordIndex]
+          || getLastFilledChord(section.chordProgression.slice(0, this.state.selectedChordIndex))
+        : null;
+    const previousChord = selectedChord || getLastFilledChord(section.chordProgression);
     const borrowed = getBorrowedChords(this.state.song.key, this.state.song.scaleType);
     const baseline = suggestNextChords({
       currentKey: this.state.song.key,
       scaleType: this.state.song.scaleType,
       previousChord,
-      progressionHistory: section.chordProgression,
+      progressionHistory: getFilledChords(section.chordProgression),
     });
 
     const groups = [
@@ -2298,15 +3094,33 @@ export class UIEditor {
     this.renderChordPalette();
     this.renderSections();
     this.renderArrangementOverview();
+    this.renderArrangementGrid();
     this.renderProgression();
     this.renderSuggestions();
     this.renderModeSurface();
     this.renderExportDialog();
     this.renderTempoDialog();
+    this.renderKeyScaleDialog();
     this.renderSettingsDialog();
     this.renderEditor();
     this.updateHistoryButtons();
     this.updatePlaybackDecorations();
+  }
+
+  getScaleTypeLabel(scaleType = this.state.song.scaleType) {
+    return SCALE_TYPE_OPTIONS.find(([value]) => value === scaleType)?.[1]
+      || (scaleType ? `${scaleType.charAt(0).toUpperCase()}${scaleType.slice(1)}` : "");
+  }
+
+  getScaleTypeShortLabel(scaleType = this.state.song.scaleType) {
+    return SCALE_TYPE_SHORT_LABELS[scaleType] || this.getScaleTypeLabel(scaleType);
+  }
+
+  getSongKeyScaleLabel({ compact = false } = {}) {
+    const scaleLabel = compact
+      ? this.getScaleTypeShortLabel(this.state.song.scaleType)
+      : this.getScaleTypeLabel(this.state.song.scaleType);
+    return `${this.state.song.key} ${scaleLabel}`;
   }
 
   syncSongFields() {
@@ -2318,6 +3132,20 @@ export class UIEditor {
     if (this.refs.tempoLaunch) {
       this.refs.tempoLaunch.textContent = `${this.state.song.tempo} BPM`;
     }
+    if (this.refs.editorTempoLaunch) {
+      this.refs.editorTempoLaunch.setAttribute("aria-label", `Adjust tempo, ${this.state.song.tempo} BPM`);
+      this.refs.editorTempoLaunch.setAttribute("title", `${this.state.song.tempo} BPM`);
+    }
+    if (this.refs.editorKeyScaleLabel) {
+      this.refs.editorKeyScaleLabel.textContent = this.getSongKeyScaleLabel({ compact: true });
+    }
+    if (this.refs.editorKeyScaleLaunch) {
+      const keyScaleLabel = this.getSongKeyScaleLabel();
+      this.refs.editorKeyScaleLaunch.setAttribute("aria-label", `Adjust key and scale, ${keyScaleLabel}`);
+      this.refs.editorKeyScaleLaunch.setAttribute("title", keyScaleLabel);
+    }
+    this.refs.arrangementTempoLaunch?.replaceChildren(`${this.state.song.tempo} BPM`);
+    this.refs.paletteTempoLaunch?.replaceChildren(`${this.state.song.tempo} BPM`);
     this.refs.activeSectionTitle.textContent = this.getActiveSection()?.name || "Section";
     this.refs.editorSectionTitle.textContent = this.getActiveSection()?.name || "Section";
   }
@@ -2338,6 +3166,12 @@ export class UIEditor {
     if (this.refs.tempoLaunch) {
       this.refs.tempoLaunch.textContent = `${nextTempo} BPM`;
     }
+    if (this.refs.editorTempoLaunch) {
+      this.refs.editorTempoLaunch.setAttribute("aria-label", `Adjust tempo, ${nextTempo} BPM`);
+      this.refs.editorTempoLaunch.setAttribute("title", `${nextTempo} BPM`);
+    }
+    this.refs.arrangementTempoLaunch?.replaceChildren(`${nextTempo} BPM`);
+    this.refs.paletteTempoLaunch?.replaceChildren(`${nextTempo} BPM`);
     if (persist) {
       this.persistSong();
     } else {
@@ -2381,9 +3215,12 @@ export class UIEditor {
   }
 
   refreshHarmonyViews() {
+    this.renderChordPalette();
     this.renderSections();
     this.renderProgression();
     this.renderSuggestions();
+    this.renderArrangementOverview();
+    this.renderArrangementGrid();
     if (this.state.activeTab === "melody") {
       this.renderMelodyEditor();
     }
@@ -2428,7 +3265,7 @@ export class UIEditor {
               <span class="tag-pill">${section.lengthInBars}b${isPlaying ? " · Live" : ""}</span>
             </div>
             <h3>${escapeHtml(section.name)}</h3>
-            <p class="small-copy">${section.chordProgression.length} chords</p>
+            <p class="small-copy">${this.countSectionChords(section)} chords</p>
             <div class="section-actions">
               <button class="section-button ${isActive ? "active" : ""}" data-action="select-section" data-section-id="${section.id}">Open</button>
               <button class="section-button ${this.playback.loopSectionId === section.id ? "active" : ""}" data-action="loop-section" data-section-id="${section.id}">Loop</button>
@@ -2494,9 +3331,12 @@ export class UIEditor {
     const section = this.getActiveSection();
     const currentPlayingChordIndex =
       this.state.playbackSectionId === section.id ? this.state.playbackChordIndex : null;
+    const chordEntries = (section.chordProgression || [])
+      .map((chord, index) => ({ chord, index }))
+      .filter(({ chord }) => Boolean(chord));
     const markup = [];
 
-    if (section.chordProgression.length === 0) {
+    if (!chordEntries.length) {
       markup.push(`
         <div class="empty-state" style="min-width:min(70vw,300px)">
           <h3 style="margin:0">No chords yet</h3>
@@ -2504,8 +3344,9 @@ export class UIEditor {
         </div>
       `);
     } else {
-      section.chordProgression.forEach((chord, index) => {
+      chordEntries.forEach(({ chord, index }) => {
         const theory = this.getChordTheorySummary(chord);
+        const positionLabel = section.chordLayout === "grid" ? this.getArrangementPositionLabel(index) : `${index + 1}`;
         markup.push(`
           <article
             class="chord-card ${index === this.state.selectedChordIndex ? "active" : ""} ${currentPlayingChordIndex === index ? "live" : ""}"
@@ -2520,7 +3361,7 @@ export class UIEditor {
               aria-pressed="${index === this.state.selectedChordIndex ? "true" : "false"}"
             >
               <div class="chord-topline">
-                <span class="panel-kicker">${index + 1}</span>
+                <span class="panel-kicker">${escapeHtml(positionLabel)}</span>
                 <span class="tag-pill">${chord.durationInBeats}b</span>
               </div>
               <span class="chord-name">${escapeHtml(getChordDisplayName(chord))}</span>
@@ -2533,6 +3374,262 @@ export class UIEditor {
 
     this.refs.progressionRow.innerHTML = markup.join("");
     this.renderChordInspector();
+  }
+
+  /* ── Arrangement Grid View ────────────────────────────── */
+
+  renderArrangementGrid() {
+    if (!this.refs.arrangementSections) return;
+    const song = this.state.song;
+    const key = song.key;
+    const scaleType = song.scaleType;
+    const beatsPerBar = getBeatsPerBar(song);
+    const barsPerRow = 4;
+
+    const sectionsHtml = song.sections.map((section) => {
+      this.ensureArrangementGridResolution(section);
+      const totalDisplayBars = this.getArrangementDisplayBarCount(section);
+      const totalRows = Math.ceil(totalDisplayBars / barsPerRow);
+      const isBarSelectedInSection =
+        this.state.selectedBarSectionId === section.id && Number.isInteger(this.state.selectedBarIndex);
+      const selectedBeatIndex = isBarSelectedInSection ? this.state.selectedBarIndex : null;
+      const canDeleteLine = totalDisplayBars > Math.max(1, Number(section.lengthInBars) || 0);
+      const selectedBarChord = selectedBeatIndex !== null
+        ? section.chordProgression[selectedBeatIndex] || null
+        : null;
+      const selectedDuration = selectedBarChord
+        ? this.getArrangementEffectiveDuration(section, selectedBeatIndex, selectedBarChord)
+        : 0;
+      const nextFilledBeat = selectedBarChord
+        ? this.findNextFilledArrangementBeat(section, selectedBeatIndex)
+        : null;
+      const canMergeNext = Boolean(
+        selectedBarChord
+        && nextFilledBeat !== null
+        && nextFilledBeat === selectedBeatIndex + selectedDuration,
+      );
+      const maxLength = selectedBarChord
+        ? this.getArrangementMaxChordDuration(section, selectedBeatIndex)
+        : 0;
+      const selectionLabel = selectedBeatIndex !== null
+        ? this.getArrangementPositionLabel(selectedBeatIndex)
+        : null;
+      const directLengthOptions = selectedBarChord
+        ? [...new Set([1, 2, beatsPerBar, beatsPerBar * 2]
+          .filter((length) => length <= maxLength)
+          .sort((left, right) => left - right))]
+        : [];
+      const barMenuOpen = this.state.arrangementBarMenuSectionId === section.id && isBarSelectedInSection;
+      const timeline = this.buildArrangementDisplayTimeline(section);
+
+      let rowsHtml = "";
+      for (let row = 0; row < totalRows; row++) {
+        const rowBarCount = Math.min(barsPerRow, totalDisplayBars - row * barsPerRow);
+        const rowStartBeat = row * barsPerRow * beatsPerBar;
+        const rowEndBeat = rowStartBeat + rowBarCount * beatsPerBar;
+
+        // Measure markers row
+        let markersHtml = "";
+        for (let col = 0; col < rowBarCount; col++) {
+          const barIdx = row * barsPerRow + col;
+          const barNum = barIdx + 1;
+          let ticks = `<span class="arr-tick arr-tick--bar">${barNum}</span>`;
+          for (let b = 1; b < beatsPerBar; b++) {
+            ticks += `<span class="arr-tick arr-tick--beat">&middot;</span>`;
+          }
+          markersHtml += `<div class="arr-measure-marker">${ticks}</div>`;
+        }
+
+        const backplateHtml = Array.from({ length: rowBarCount }, (_, col) => {
+          const barIndex = row * barsPerRow + col;
+          const barStartBeat = rowStartBeat + col * beatsPerBar;
+          const isOverflow = barIndex >= section.lengthInBars;
+          return `
+            <div
+              class="arr-bar-base ${isOverflow ? "arr-bar-base--overflow" : ""}"
+              style="grid-column:${col * beatsPerBar + 1} / span ${beatsPerBar};"
+              data-bar-start="${barStartBeat}"
+            ></div>
+          `;
+        }).join("");
+
+        const rowEvents = timeline.filter(
+          (event) => event.endBeat > rowStartBeat && event.startBeat < rowEndBeat,
+        );
+        const segments = [];
+        const pushEmptySegments = (startBeat, endBeat) => {
+          let emptyCursor = startBeat;
+          while (emptyCursor < endBeat) {
+            const nextBoundary = Math.min(
+              endBeat,
+              rowStartBeat
+                + (Math.floor((emptyCursor - rowStartBeat) / beatsPerBar) + 1) * beatsPerBar,
+            );
+            segments.push({
+              type: "empty",
+              startBeat: emptyCursor,
+              visibleStartBeat: emptyCursor,
+              endBeat: nextBoundary,
+            });
+            emptyCursor = nextBoundary;
+          }
+        };
+
+        let rowCursor = rowStartBeat;
+        rowEvents.forEach((event) => {
+          const visibleStartBeat = Math.max(event.startBeat, rowStartBeat);
+          const visibleEndBeat = Math.min(event.endBeat, rowEndBeat);
+          if (rowCursor < visibleStartBeat) {
+            pushEmptySegments(rowCursor, visibleStartBeat);
+          }
+          segments.push({
+            type: "chord",
+            startBeat: event.startBeat,
+            visibleStartBeat,
+            endBeat: visibleEndBeat,
+            chordIndex: event.index,
+            chord: event.chord,
+            continuedLeft: event.startBeat < rowStartBeat,
+            continuedRight: event.endBeat > rowEndBeat,
+          });
+          rowCursor = visibleEndBeat;
+        });
+        if (rowCursor < rowEndBeat) {
+          pushEmptySegments(rowCursor, rowEndBeat);
+        }
+
+        const cellsHtml = segments.map((segment) => {
+          const segmentSpan = Math.max(1, segment.endBeat - segment.visibleStartBeat);
+          const gridColumnStart = segment.visibleStartBeat - rowStartBeat + 1;
+          const isSelected = this.state.selectedBarSectionId === section.id && this.state.selectedBarIndex === segment.startBeat;
+          const isOverflow = segment.visibleStartBeat >= section.lengthInBars * beatsPerBar;
+
+          if (segment.type === "empty") {
+            const emptyClasses = [
+              "arr-bar-cell",
+              "arr-bar-cell--empty",
+              isSelected ? "arr-bar-cell--selected" : "",
+              isOverflow ? "arr-bar-cell--overflow" : "",
+            ].filter(Boolean).join(" ");
+            return `
+              <button
+                class="${emptyClasses}"
+                data-action="select-bar"
+                data-bar-index="${segment.startBeat}"
+                data-section-id="${section.id}"
+                style="grid-column:${gridColumnStart} / span ${segmentSpan};"
+                aria-label="${escapeHtml(this.getArrangementPositionLabel(segment.startBeat) || "Empty chunk")}"
+              ></button>
+            `;
+          }
+
+          const roman = matchChordToRoman(segment.chord, key, scaleType);
+          const funcCategory = getChordFunctionCategory(roman);
+          const isLive =
+            this.state.playbackSectionId === section.id && this.state.playbackChordIndex === segment.chordIndex;
+          const chordClasses = [
+            "arr-bar-cell",
+            isSelected ? "arr-bar-cell--selected" : "",
+            isLive ? "arr-bar-cell--live" : "",
+            isOverflow ? "arr-bar-cell--overflow" : "",
+            segment.continuedLeft ? "arr-bar-cell--continued-left" : "",
+            segment.continuedRight ? "arr-bar-cell--continued-right" : "",
+          ].filter(Boolean).join(" ");
+          return `
+            <button
+              class="${chordClasses}"
+              data-action="select-bar"
+              data-bar-index="${segment.startBeat}"
+              data-section-id="${section.id}"
+              data-chord-function="${funcCategory}"
+              style="grid-column:${gridColumnStart} / span ${segmentSpan};"
+            >
+              <span class="arr-bar-cell-title">${escapeHtml(getChordDisplayName(segment.chord))}</span>
+              <span class="arr-bar-cell-meta">${escapeHtml(this.formatArrangementLengthLabel(
+                this.getArrangementEffectiveDuration(section, segment.startBeat, segment.chord),
+              ))}</span>
+            </button>
+          `;
+        }).join("");
+
+        rowsHtml += `
+          <div class="arr-row-group">
+            <div class="arr-measure-markers" style="grid-template-columns:repeat(${rowBarCount}, minmax(0, 1fr));">${markersHtml}</div>
+            <div class="arr-bar-row">
+              <div class="arr-bar-grid" style="grid-template-columns:repeat(${rowBarCount * beatsPerBar}, minmax(0, 1fr));">
+                ${backplateHtml}
+                ${cellsHtml}
+              </div>
+            </div>
+          </div>`;
+      }
+
+      const barControls = isBarSelectedInSection && selectedBarChord
+        ? `
+          <div class="arr-icon-toolbar" data-section-id="${section.id}">
+            <button class="arr-icon-btn arr-icon-btn--danger" data-action="arrangement-delete-chord" title="Delete" ${selectedBarChord ? "" : "disabled"}>
+              <svg viewBox="0 0 20 20" width="18" height="18"><rect x="4" y="4" width="12" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 7.5l5 5M12.5 7.5l-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <span class="arr-icon-divider"></span>
+            <button class="arr-icon-btn" data-action="arrangement-edit-chord" title="Edit">
+              <svg viewBox="0 0 20 20" width="18" height="18"><path d="M4 16l1.2-4.2L13.5 3.5l3 3L8.2 14.8 4 16z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 5l3 3" stroke="currentColor" stroke-width="1.3"/></svg>
+            </button>
+            <button class="arr-icon-btn" data-action="arrangement-duplicate-chord" title="Duplicate" ${selectedBarChord ? "" : "disabled"}>
+              <svg viewBox="0 0 20 20" width="18" height="18"><rect x="2" y="5" width="10" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="8" y="3" width="10" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+            </button>
+            <span class="arr-icon-divider"></span>
+            <button class="arr-icon-btn" data-action="arrangement-split-chord" title="Split" ${selectedBarChord && selectedDuration > 1 ? "" : "disabled"}>
+              <svg viewBox="0 0 20 20" width="18" height="18"><rect x="2" y="4" width="7" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="11" y="4" width="7" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v8" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.5 1.5"/></svg>
+            </button>
+            <button class="arr-icon-btn" data-action="arrangement-merge-next" title="Merge" ${canMergeNext ? "" : "disabled"}>
+              <svg viewBox="0 0 20 20" width="18" height="18"><rect x="2" y="4" width="16" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 8l3 2-3 2M13 8l-3 2 3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <span class="arr-icon-divider"></span>
+            <button class="arr-icon-btn" data-action="arrangement-change-chord-length" data-delta="-1" title="Shorten" ${selectedBarChord && selectedDuration > 1 ? "" : "disabled"}>
+              <svg viewBox="0 0 20 20" width="18" height="18"><path d="M14 10H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 10l3-3M6 10l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14 10l-3-3M14 10l-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <button class="arr-icon-btn" data-action="arrangement-change-chord-length" data-delta="1" title="Elongate" ${selectedBarChord && selectedDuration < maxLength ? "" : "disabled"}>
+              <svg viewBox="0 0 20 20" width="18" height="18"><path d="M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 10l3-3M4 10l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M16 10l-3-3M16 10l-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+          </div>
+        `
+        : "";
+
+      return `
+        <div class="arr-section-block" data-section-id="${section.id}">
+          <div class="arr-section-header">
+            <h3 class="arr-section-name">${escapeHtml(section.name)}</h3>
+            <div class="arr-section-header-actions">
+              ${canDeleteLine
+                ? `<button class="arr-section-mini-btn arr-section-mini-btn--danger" data-action="arrangement-delete-line" data-section-id="${section.id}">Delete line</button>`
+                : ""}
+              ${song.sections.length > 1
+                ? `<button class="arr-section-mini-btn arr-section-mini-btn--danger" data-action="arrangement-delete-section" data-section-id="${section.id}">Delete section</button>`
+                : ""}
+            </div>
+          </div>
+          ${barControls}
+          ${rowsHtml}
+          <button class="arr-add-btn" data-action="arrangement-add-chord-row" data-section-id="${section.id}">+</button>
+        </div>`;
+    }).join("");
+
+    this.refs.arrangementSections.innerHTML = sectionsHtml;
+
+    // Update key label
+    if (this.refs.arrangementKeyLabel) {
+      this.refs.arrangementKeyLabel.textContent = `${song.key} ${song.scaleType.charAt(0).toUpperCase() + song.scaleType.slice(1)}`;
+    }
+
+    // Show/hide palette based on bar selection
+    const palPanel = this.refs.chordPalettePanel;
+    if (palPanel) {
+      if (this.isIphoneChordPlayerView() || this.state.selectedBarIndex !== null) {
+        palPanel.classList.remove("arr-palette-hidden");
+      } else {
+        palPanel.classList.add("arr-palette-hidden");
+      }
+    }
   }
 
   renderChordInspector() {
@@ -2552,8 +3649,10 @@ export class UIEditor {
     if (!selectedChord) {
       this.refs.chordInspector.innerHTML = `
         <div class="empty-state chord-inspector-empty">
-          <h3 style="margin:0">Select a chord</h3>
-          <p class="small-copy">Choose any chord card above to edit its root, quality, voicing, timing, or quick actions.</p>
+          <h3 style="margin:0">${section.chordLayout === "grid" ? "Select a bar" : "Select a chord"}</h3>
+          <p class="small-copy">${section.chordLayout === "grid"
+            ? "Tap any bar in the loop grid, then choose or edit the chord you want in that slot."
+            : "Choose any chord card above to edit its root, quality, voicing, timing, or quick actions."}</p>
         </div>
       `;
       return;
@@ -2561,6 +3660,29 @@ export class UIEditor {
 
     const theory = this.getChordTheorySummary(selectedChord);
     const chordIndex = this.state.selectedChordIndex;
+    const chordPositionLabel = section.chordLayout === "grid"
+      ? this.getArrangementPositionLabel(chordIndex)
+      : `#${chordIndex + 1}`;
+    const songKey = this.state.song.key;
+    const songScale = this.state.song.scaleType;
+    const scaleNotes = getScaleNotes(songKey, songScale);
+    const scaleNoteSet = new Set(scaleNotes);
+
+    // Filter roots to only in-key notes
+    const inKeyRoots = NOTE_NAMES.filter((note) => scaleNoteSet.has(note));
+
+    // Filter qualities: only show if the chord stays in key with this quality
+    const inKeyQualities = CHORD_QUALITIES.filter(([value]) =>
+      isChordInKey({ root: selectedChord.root, quality: value, extension: selectedChord.extension }, songKey, songScale)
+    );
+
+    // Filter extensions: only show if the chord stays in key with this extension
+    const inKeyExtensions = CHORD_EXTENSIONS.filter((ext) =>
+      isChordInKey({ root: selectedChord.root, quality: selectedChord.quality, extension: ext }, songKey, songScale)
+    );
+
+    // Filter slash bass to only in-key notes
+    const inKeySlashBass = NOTE_NAMES.filter((note) => scaleNoteSet.has(note));
 
     this.refs.chordInspector.innerHTML = `
       <section class="chord-inspector-card">
@@ -2570,7 +3692,7 @@ export class UIEditor {
             <h3>${escapeHtml(getChordDisplayName(selectedChord))}</h3>
           </div>
           <div class="chord-inspector-meta">
-            <span class="status-pill">#${chordIndex + 1}</span>
+            <span class="status-pill">${escapeHtml(chordPositionLabel)}</span>
             <span class="status-pill">${escapeHtml(theory.roman)}</span>
             <span class="status-pill">${selectedChord.durationInBeats} beats</span>
           </div>
@@ -2581,7 +3703,7 @@ export class UIEditor {
           <label class="meta-field">
             <span>Root</span>
             <select data-chord-field="root">
-              ${NOTE_NAMES.map((note) => `<option value="${note}" ${selectedChord.root === note ? "selected" : ""}>${note}</option>`).join("")}
+              ${inKeyRoots.map((note) => `<option value="${note}" ${selectedChord.root === note ? "selected" : ""}>${note}</option>`).join("")}
             </select>
           </label>
           <label class="meta-field">
@@ -2596,7 +3718,7 @@ export class UIEditor {
             <span>Slash Bass</span>
             <select data-chord-field="slashBass">
               <option value="">Root bass</option>
-              ${NOTE_NAMES.map((note) => `<option value="${note}" ${selectedChord.slashBass === note ? "selected" : ""}>/${note}</option>`).join("")}
+              ${inKeySlashBass.map((note) => `<option value="${note}" ${selectedChord.slashBass === note ? "selected" : ""}>/${note}</option>`).join("")}
             </select>
           </label>
         </div>
@@ -2604,7 +3726,7 @@ export class UIEditor {
         <div class="chord-chip-group">
           <p class="sheet-section-title">Quality</p>
           <div class="extension-grid">
-            ${CHORD_QUALITIES.map(([value, label]) => `
+            ${inKeyQualities.map(([value, label]) => `
               <button class="extension-chip ${selectedChord.quality === value ? "active" : ""}" data-action="set-chord-quality" data-quality="${value}">${label}</button>
             `).join("")}
           </div>
@@ -2613,18 +3735,28 @@ export class UIEditor {
         <div class="chord-chip-group">
           <p class="sheet-section-title">Extension</p>
           <div class="extension-grid">
-            ${CHORD_EXTENSIONS.map((ext) => `
+            ${inKeyExtensions.map((ext) => `
               <button class="extension-chip ${selectedChord.extension === ext ? "active" : ""}" data-action="set-chord-extension" data-extension="${ext}">${ext || "Triad"}</button>
             `).join("")}
           </div>
         </div>
 
-        <div class="sheet-action-row chord-inspector-actions">
-          <button class="action-button primary" data-action="audition-selected-chord">Play</button>
-          <button class="action-button" data-action="duplicate-selected-chord">Duplicate</button>
-          <button class="action-button" data-action="split-selected-chord">Split</button>
-          <button class="action-button" data-action="merge-selected-chord">Merge Next</button>
-          <button class="action-button danger" data-action="delete-selected-chord">Delete</button>
+        <div class="chord-inspector-icon-row">
+          <button class="ci-icon-btn ci-icon-btn--primary" data-action="audition-selected-chord" title="Play">
+            <svg viewBox="0 0 20 20" width="20" height="20"><path d="M6.5 4L15.5 10L6.5 16V4Z" fill="currentColor"/></svg>
+          </button>
+          <button class="ci-icon-btn" data-action="duplicate-selected-chord" title="Duplicate">
+            <svg viewBox="0 0 20 20" width="18" height="18"><rect x="2" y="5" width="10" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="8" y="3" width="10" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+          </button>
+          <button class="ci-icon-btn" data-action="split-selected-chord" title="Split">
+            <svg viewBox="0 0 20 20" width="18" height="18"><rect x="2" y="4" width="7" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="11" y="4" width="7" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v8" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.5 1.5"/></svg>
+          </button>
+          <button class="ci-icon-btn" data-action="merge-selected-chord" title="Merge">
+            <svg viewBox="0 0 20 20" width="18" height="18"><rect x="2" y="4" width="16" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 8l3 2-3 2M13 8l-3 2 3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </button>
+          <button class="ci-icon-btn ci-icon-btn--danger" data-action="delete-selected-chord" title="Delete">
+            <svg viewBox="0 0 20 20" width="18" height="18"><rect x="4" y="4" width="12" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 7.5l5 5M12.5 7.5l-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </section>
     `;
@@ -2632,11 +3764,16 @@ export class UIEditor {
 
   renderSuggestions() {
     const groups = this.buildSuggestionGroups();
+    const isChordPlayerView = this.isIphoneChordPlayerView();
     if (!groups.length) {
       this.refs.suggestionRow.innerHTML = '<div class="empty-state suggestion-empty">No chord suggestions yet.</div>';
+      if (this.refs.paletteSuggestionRow) {
+        this.refs.paletteSuggestionRow.innerHTML = "";
+        this.refs.paletteSuggestionRow.classList.add("hidden");
+      }
       return;
     }
-    this.refs.suggestionRow.innerHTML = groups
+    const markup = groups
       .map(
         (group) => `
           <article class="suggestion-group suggestion-group--${escapeHtml(group.tone)}" data-suggestion-group="${escapeHtml(group.tone)}">
@@ -2653,6 +3790,12 @@ export class UIEditor {
         `,
       )
       .join("");
+    this.refs.suggestionRow.innerHTML = markup;
+    if (this.refs.paletteSuggestionRow) {
+      const hasArmedArrangementBar = Boolean(this.getActiveArrangementBarLabel(this.getActiveSection()));
+      this.refs.paletteSuggestionRow.innerHTML = isChordPlayerView && hasArmedArrangementBar ? markup : "";
+      this.refs.paletteSuggestionRow.classList.toggle("hidden", !(isChordPlayerView && hasArmedArrangementBar));
+    }
   }
 
   // ===== MODE SURFACES =====
@@ -2856,8 +3999,64 @@ export class UIEditor {
     return Math.round(50 + ratio * 150);
   }
 
-  openTempoDialog() {
-    if (this.layoutProfile !== "iphone") return;
+  getTempoDialogAnchorRect(anchorEl = this.tempoDialogAnchorEl) {
+    if (anchorEl instanceof Element && anchorEl.isConnected) {
+      const rect = anchorEl.getBoundingClientRect();
+      if (rect.width || rect.height) {
+        return rect;
+      }
+    }
+    return this.tempoDialogAnchorRect;
+  }
+
+  getAnchoredDialogPosition(anchorRect, {
+    maxWidth = 248,
+    minWidth = 180,
+    estimatedHeight = 272,
+    offset = 10,
+  } = {}) {
+    const viewport = window.visualViewport;
+    const viewportWidth = viewport?.width || window.innerWidth || 0;
+    const viewportHeight = viewport?.height || window.innerHeight || 0;
+    const viewportLeft = viewport?.offsetLeft || 0;
+    const viewportTop = viewport?.offsetTop || 0;
+    const cardWidth = Math.min(maxWidth, Math.max(minWidth, viewportWidth - 24));
+    const anchorCenter = anchorRect
+      ? anchorRect.left + (anchorRect.width / 2)
+      : viewportLeft + (viewportWidth / 2);
+    const preferredTop = anchorRect
+      ? anchorRect.bottom + offset
+      : viewportTop + 72;
+    const left = clamp(
+      anchorCenter - (cardWidth / 2),
+      viewportLeft + 12,
+      viewportLeft + viewportWidth - cardWidth - 12,
+    );
+    const top = clamp(
+      preferredTop,
+      viewportTop + 12,
+      viewportTop + viewportHeight - estimatedHeight - 12,
+    );
+    return {
+      left,
+      top,
+      width: cardWidth,
+    };
+  }
+
+  getTempoDialogPosition(anchorRect = this.getTempoDialogAnchorRect()) {
+    return this.getAnchoredDialogPosition(anchorRect);
+  }
+
+  openTempoDialog(anchorEl = null) {
+    this.closeKeyScaleDialog();
+    if (anchorEl instanceof Element) {
+      this.tempoDialogAnchorEl = anchorEl;
+      this.tempoDialogAnchorRect = anchorEl.getBoundingClientRect();
+    } else if (!this.tempoDialogAnchorEl && this.refs.tempoLaunch instanceof Element) {
+      this.tempoDialogAnchorEl = this.refs.tempoLaunch;
+      this.tempoDialogAnchorRect = this.refs.tempoLaunch.getBoundingClientRect();
+    }
     this.state.tempoDialogOpen = true;
     this.tempoDialogDirty = false;
     this.renderTempoDialog();
@@ -2870,18 +4069,57 @@ export class UIEditor {
     }
     this.tempoDialogDirty = false;
     this.state.tempoDialogOpen = false;
+    this.tempoDialogAnchorEl = null;
+    this.tempoDialogAnchorRect = null;
     if (render) {
       this.renderTempoDialog();
     }
   }
 
+  getKeyScaleDialogAnchorRect(anchorEl = this.keyScaleDialogAnchorEl) {
+    if (anchorEl instanceof Element && anchorEl.isConnected) {
+      const rect = anchorEl.getBoundingClientRect();
+      if (rect.width || rect.height) {
+        return rect;
+      }
+    }
+    return this.keyScaleDialogAnchorRect;
+  }
+
+  getKeyScaleDialogPosition(anchorRect = this.getKeyScaleDialogAnchorRect()) {
+    return this.getAnchoredDialogPosition(anchorRect, {
+      maxWidth: 236,
+      minWidth: 212,
+      estimatedHeight: 214,
+      offset: 10,
+    });
+  }
+
+  openKeyScaleDialog(anchorEl = null) {
+    this.closeTempoDialog();
+    if (anchorEl instanceof Element) {
+      this.keyScaleDialogAnchorEl = anchorEl;
+      this.keyScaleDialogAnchorRect = anchorEl.getBoundingClientRect();
+    } else if (!this.keyScaleDialogAnchorEl && this.refs.editorKeyScaleLaunch instanceof Element) {
+      this.keyScaleDialogAnchorEl = this.refs.editorKeyScaleLaunch;
+      this.keyScaleDialogAnchorRect = this.refs.editorKeyScaleLaunch.getBoundingClientRect();
+    }
+    this.state.keyScaleDialogOpen = true;
+    this.renderKeyScaleDialog();
+  }
+
+  closeKeyScaleDialog({ render = true } = {}) {
+    this.state.keyScaleDialogOpen = false;
+    this.keyScaleDialogAnchorEl = null;
+    this.keyScaleDialogAnchorRect = null;
+    if (render) {
+      this.renderKeyScaleDialog();
+    }
+  }
+
   renderTempoDialog() {
     if (!this.refs.tempoDialog || !this.refs.tempoDialogSurface) return;
-    if (!this.state.tempoDialogOpen || this.layoutProfile !== "iphone") {
-      if (this.layoutProfile !== "iphone") {
-        this.state.tempoDialogOpen = false;
-        this.tempoDialogDirty = false;
-      }
+    if (!this.state.tempoDialogOpen) {
       this.refs.tempoDialog.classList.add("hidden");
       this.refs.tempoDialog.setAttribute("aria-hidden", "true");
       this.refs.tempoDialogSurface.innerHTML = "";
@@ -2903,8 +4141,8 @@ export class UIEditor {
           <button class="tempo-dialog-done" data-tempo-dialog-action="close">Done</button>
         </div>
         <div class="tempo-dialog-display">
-          <span class="tempo-dialog-unit">BPM</span>
           <output class="tempo-dialog-value">${tempo}</output>
+          <span class="tempo-dialog-unit">BPM</span>
         </div>
         <div class="tempo-dialog-stepper">
           <button class="tempo-dialog-step" data-tempo-dialog-step="-1" aria-label="Decrease tempo">-</button>
@@ -2913,6 +4151,7 @@ export class UIEditor {
         <div
           class="tempo-dial"
           data-tempo-dial
+          style="--tempo-dial-size:176px; --tempo-dial-knob-offset:62px;"
           role="slider"
           aria-label="Tempo"
           aria-valuemin="50"
@@ -2922,13 +4161,72 @@ export class UIEditor {
         >
           <div class="tempo-dial-ring" style="--tempo-sweep:${dialSweep}deg;">
             <div class="tempo-dial-ticks"></div>
-            <div class="tempo-dial-knob" style="transform:translate(-50%, -50%) rotate(${dialAngle}deg) translateY(-74px);"></div>
+            <div class="tempo-dial-knob" style="transform:translate(-50%, -50%) rotate(${dialAngle}deg) translateY(calc(var(--tempo-dial-knob-offset) * -1));"></div>
             <div class="tempo-dial-center"></div>
           </div>
         </div>
       </div>
     `;
+    const card = document.getElementById("tempo-dialog-card");
+    if (card) {
+      const position = this.getTempoDialogPosition();
+      card.style.left = `${position.left}px`;
+      card.style.top = `${position.top}px`;
+      card.style.width = `${position.width}px`;
+    }
     this.syncTempoDialogDisplay();
+  }
+
+  renderKeyScaleDialog() {
+    if (!this.refs.keyScaleDialog || !this.refs.keyScaleDialogSurface) return;
+    if (!this.state.keyScaleDialogOpen) {
+      this.refs.keyScaleDialog.classList.add("hidden");
+      this.refs.keyScaleDialog.setAttribute("aria-hidden", "true");
+      this.refs.keyScaleDialogSurface.innerHTML = "";
+      return;
+    }
+
+    const keyOptions = NOTE_NAMES.map((note) => `
+      <option value="${escapeHtml(note)}"${note === this.state.song.key ? " selected" : ""}>${escapeHtml(note)}</option>
+    `).join("");
+    const scaleOptions = SCALE_TYPE_OPTIONS.map(([value, label]) => `
+      <option value="${value}"${value === this.state.song.scaleType ? " selected" : ""}>${label}</option>
+    `).join("");
+
+    this.refs.keyScaleDialog.classList.remove("hidden");
+    this.refs.keyScaleDialog.setAttribute("aria-hidden", "false");
+    this.refs.keyScaleDialogSurface.innerHTML = `
+      <div class="key-scale-dialog-shell">
+        <div class="tempo-dialog-head">
+          <div class="tempo-dialog-title-block">
+            <p class="tempo-dialog-kicker">Project Harmonic Center</p>
+            <h2 id="key-scale-dialog-title">Key &amp; Scale</h2>
+          </div>
+          <button class="tempo-dialog-done" data-key-scale-dialog-action="close">Done</button>
+        </div>
+        <div class="key-scale-dialog-grid">
+          <label class="key-scale-dialog-field">
+            <span class="key-scale-dialog-label">Key</span>
+            <select class="key-scale-dialog-select" data-key-scale-field="key" aria-label="Song key">
+              ${keyOptions}
+            </select>
+          </label>
+          <label class="key-scale-dialog-field">
+            <span class="key-scale-dialog-label">Scale</span>
+            <select class="key-scale-dialog-select" data-key-scale-field="scale" aria-label="Song scale">
+              ${scaleOptions}
+            </select>
+          </label>
+        </div>
+      </div>
+    `;
+    const card = document.getElementById("key-scale-dialog-card");
+    if (card) {
+      const position = this.getKeyScaleDialogPosition();
+      card.style.left = `${position.left}px`;
+      card.style.top = `${position.top}px`;
+      card.style.width = `${position.width}px`;
+    }
   }
 
   syncTempoDialogDisplay() {
@@ -2944,11 +4242,13 @@ export class UIEditor {
     if (dial) dial.setAttribute("aria-valuenow", String(tempo));
     if (ring) ring.style.setProperty("--tempo-sweep", `${dialSweep}deg`);
     if (knob) {
-      knob.style.transform = `translate(-50%, -50%) rotate(${dialAngle}deg) translateY(-74px)`;
+      knob.style.transform = `translate(-50%, -50%) rotate(${dialAngle}deg) translateY(calc(var(--tempo-dial-knob-offset) * -1))`;
     }
   }
 
   openSettingsDialog() {
+    this.closeTempoDialog();
+    this.closeKeyScaleDialog();
     this.closeExportDialog({ render: false });
     this.state.settingsDialogOpen = true;
     this.renderWorkspaceModeButtons();
@@ -2965,6 +4265,8 @@ export class UIEditor {
   }
 
   openExportDialog() {
+    this.closeTempoDialog();
+    this.closeKeyScaleDialog();
     this.closeSettingsDialog({ render: false });
     this.state.exportDialogOpen = true;
     this.renderWorkspaceModeButtons();
@@ -3138,12 +4440,12 @@ export class UIEditor {
         const noteClass = this.getNoteColorClass(section, note);
         return `
           <div
-            class="note-block ${noteClass} ${note.muted ? "muted" : ""} ${this.isNoteSelected(note.id, section) ? "active" : ""} ${resizeArmedIds.has(note.id) ? "resize-armed" : ""}"
+            class="note-block ${noteClass} ${note.muted ? "muted" : ""} ${this.isNoteSelected(note.id, section) ? "active" : ""} ${resizeArmedIds.has(note.id) ? "resize-armed" : ""} ${(note.startBeat + note.duration) > totalBeats ? "off-grid" : ""}"
             style="left:${note.startBeat * beatWidth + 2}px;top:${noteTop}px;width:${width}px;height:${rowHeight - 4}px"
             data-note-id="${note.id}"
           >
-            <span class="note-label">${escapeHtml(this.getPitchLabel(note.pitch))}</span>
-            <span class="resize-handle" data-note-id="${note.id}" data-note-handle="resize"></span>
+            <span class="note-handle note-handle--left" data-note-id="${note.id}" data-note-handle="move"></span>
+            <span class="note-handle note-handle--right" data-note-id="${note.id}" data-note-handle="resize"></span>
           </div>
         `;
       })
@@ -3357,7 +4659,7 @@ export class UIEditor {
             >
               <div class="arrangement-title-row">
                 <h3>${escapeHtml(section.name)}</h3>
-                <span class="tag-pill">${section.chordProgression.length} chords</span>
+                <span class="tag-pill">${this.countSectionChords(section)} chords</span>
               </div>
               <div class="accompaniment-grid">
                 <label class="meta-field">
@@ -3405,7 +4707,7 @@ export class UIEditor {
             <span class="tag-pill">${section.lengthInBars} bars</span>
           </div>
           <div class="stat-row">
-            <span class="status-pill">${section.chordProgression.length} chords</span>
+            <span class="status-pill">${this.countSectionChords(section)} chords</span>
             <span class="status-pill">${section.melodyNotes.length} notes</span>
             <span class="status-pill">Intensity: ${escapeHtml(section.intensityTag || "medium")}</span>
           </div>
@@ -3589,12 +4891,404 @@ export class UIEditor {
       const index = Number.parseInt(button.dataset.chordIndex, 10);
       if (Number.isNaN(index)) return;
       this.state.selectedChordIndex = index;
+      if (this.getActiveSection().chordLayout === "grid") {
+        this.state.selectedBarIndex = index;
+        this.state.selectedBarSectionId = this.getActiveSection().id;
+      }
       const chord = this.getSelectedChord();
       if (chord) {
         this.auditionChord(chord);
         this.renderPianoVisualizer(chord);
       }
       this.renderProgression();
+    }
+  }
+
+  /* ── Arrangement Grid Event Handler ─────────────────── */
+
+  handleArrangementClick(event) {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const action = button.dataset.action;
+
+    if (action === "open-settings") {
+      this.openSettingsDialog();
+      return;
+    }
+
+    if (action === "set-palette-mode") {
+      const mode = button.dataset.mode;
+      if (mode && PALETTE_MODES[mode]) {
+        this.state.paletteMode = mode;
+        this.syncChordPalettePanelMode();
+        this.renderChordPalette();
+        this.syncArrangementModeSwitch();
+      }
+      return;
+    }
+
+    if (action === "select-bar") {
+      const barIndex = Number.parseInt(button.dataset.barIndex, 10);
+      const sectionId = button.dataset.sectionId;
+      if (Number.isNaN(barIndex)) return;
+
+      // Toggle selection: if already selected, deselect
+      if (this.state.selectedBarIndex === barIndex && this.state.selectedBarSectionId === sectionId) {
+        this.state.selectedBarIndex = null;
+        this.state.selectedBarSectionId = null;
+        this.state.arrangementPaletteVisible = false;
+        this.state.arrangementBarMenuSectionId = null;
+        this.renderPianoVisualizer(null);
+      } else {
+        this.state.selectedBarIndex = barIndex;
+        this.state.selectedBarSectionId = sectionId;
+        this.state.arrangementPaletteVisible = true;
+        this.state.arrangementBarMenuSectionId = null;
+
+        // Set active section so palette/inspector work correctly
+        this.state.activeSectionId = sectionId;
+        this.state.selectedChordIndex = barIndex;
+
+        // Audition if chord exists
+        const section = this.state.song.sections.find((s) => s.id === sectionId);
+        const chord = section?.chordProgression[barIndex];
+        if (chord) {
+          this.auditionChord(chord);
+          this.renderPianoVisualizer(chord);
+        } else {
+          this.renderPianoVisualizer(null);
+        }
+      }
+      this.refreshHarmonyViews();
+
+      // Scroll selected bar into view after render
+      if (this.state.selectedBarIndex !== null) {
+        requestAnimationFrame(() => {
+          const cell = this.refs.arrangementSections?.querySelector(".arr-bar-cell--selected");
+          cell?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
+      return;
+    }
+
+    if (action === "arrangement-delete-chord") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (section && this.state.selectedBarIndex !== null) {
+        section.chordLayout = "grid";
+        section.chordProgression[this.state.selectedBarIndex] = null;
+        this.state.selectedChordIndex = this.state.selectedBarIndex;
+        this.state.arrangementBarMenuSectionId = null;
+        this.persistSong();
+        this.renderPianoVisualizer(null);
+        this.refreshHarmonyViews();
+      }
+      return;
+    }
+
+    if (action === "arrangement-duplicate-chord") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (section && this.state.selectedBarIndex !== null) {
+        const dup = this.duplicateArrangementChord(section, this.state.selectedBarIndex);
+        if (dup) {
+          const nextBarIndex = dup.startBeat;
+          this.state.selectedBarIndex = nextBarIndex;
+          this.state.selectedChordIndex = nextBarIndex;
+          this.state.arrangementBarMenuSectionId = section.id;
+          this.persistSong();
+          this.auditionChord(dup);
+          this.renderPianoVisualizer(dup);
+          this.refreshHarmonyViews();
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-split-chord") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (section && this.state.selectedBarIndex !== null) {
+        const splitChord = this.splitArrangementChord(section, this.state.selectedBarIndex);
+        if (splitChord) {
+          this.state.selectedChordIndex = this.state.selectedBarIndex;
+          this.state.arrangementBarMenuSectionId = section.id;
+          this.persistSong();
+          this.renderPianoVisualizer(splitChord);
+          this.refreshHarmonyViews();
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-merge-next") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (section && this.state.selectedBarIndex !== null) {
+        const chord = this.mergeArrangementChordWithNext(section, this.state.selectedBarIndex);
+        if (chord) {
+          this.state.selectedChordIndex = this.state.selectedBarIndex;
+          this.state.arrangementBarMenuSectionId = section.id;
+          this.persistSong();
+          this.renderPianoVisualizer(chord);
+          this.refreshHarmonyViews();
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-change-chord-length") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      const delta = Number.parseInt(button.dataset.delta, 10) || 0;
+      if (section && this.state.selectedBarIndex !== null && delta) {
+        const chord = section.chordProgression[this.state.selectedBarIndex];
+        if (chord) {
+          const currentDuration = this.getArrangementEffectiveDuration(section, this.state.selectedBarIndex, chord);
+          const updatedChord = this.setArrangementChordDuration(
+            section,
+            this.state.selectedBarIndex,
+            currentDuration + delta,
+          );
+          if (updatedChord) {
+            this.state.selectedChordIndex = this.state.selectedBarIndex;
+            this.state.arrangementBarMenuSectionId = section.id;
+            this.persistSong();
+            this.renderPianoVisualizer(updatedChord);
+            this.refreshHarmonyViews();
+          }
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-set-chord-length") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      const length = Number.parseInt(button.dataset.length, 10) || 0;
+      if (section && this.state.selectedBarIndex !== null && length > 0) {
+        const updatedChord = this.setArrangementChordDuration(section, this.state.selectedBarIndex, length);
+        if (updatedChord) {
+          this.state.selectedChordIndex = this.state.selectedBarIndex;
+          this.state.arrangementBarMenuSectionId = section.id;
+          this.persistSong();
+          this.renderPianoVisualizer(updatedChord);
+          this.refreshHarmonyViews();
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-edit-chord") {
+      // Open chord inspector by switching active section and chord index
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (section && this.state.selectedBarIndex !== null) {
+        this.state.activeSectionId = section.id;
+        this.state.selectedChordIndex = this.state.selectedBarIndex;
+        this.renderChordInspector();
+        // Scroll inspector into view
+        requestAnimationFrame(() => {
+          this.refs.chordInspector?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      return;
+    }
+
+    if (action === "arrangement-add-section") {
+      const newSection = createSection({
+        name: `Section ${this.state.song.sections.length + 1}`,
+        lengthInBars: 4,
+        chordLayout: "grid",
+      });
+      const insertAfterSectionId = this.state.selectedBarSectionId || this.state.activeSectionId;
+      const insertIndex = this.state.song.sections.findIndex((section) => section.id === insertAfterSectionId);
+      this.state.song.sections.splice(insertIndex >= 0 ? insertIndex + 1 : this.state.song.sections.length, 0, newSection);
+      this.state.activeSectionId = newSection.id;
+      this.state.arrangementBarMenuSectionId = null;
+      this.persistSong();
+      this.renderAll();
+      return;
+    }
+
+    if (action === "arrangement-add-line") {
+      const targetSectionId = this.state.selectedBarSectionId || this.state.activeSectionId;
+      const section = this.state.song.sections.find((entry) => entry.id === targetSectionId);
+      if (section) {
+        this.addArrangementVisibleBars(section);
+        this.persistSong();
+        this.refreshHarmonyViews();
+      }
+      return;
+    }
+
+    if (action === "arrangement-add-chord-row") {
+      const sectionId = button.dataset.sectionId;
+      const section = this.state.song.sections.find((s) => s.id === sectionId);
+      if (section) {
+        this.addArrangementVisibleBars(section);
+        this.persistSong();
+        this.refreshHarmonyViews();
+      }
+      return;
+    }
+
+    if (action === "arrangement-delete-line") {
+      const section = this.state.song.sections.find((entry) => entry.id === button.dataset.sectionId);
+      if (section && this.removeArrangementVisibleBars(section)) {
+        const selectedSection = this.state.song.sections.find(
+          (entry) => entry.id === this.state.selectedBarSectionId,
+        );
+        const selectedChord =
+          selectedSection && Number.isInteger(this.state.selectedBarIndex)
+            ? selectedSection.chordProgression[this.state.selectedBarIndex] || null
+            : null;
+        this.persistSong();
+        this.renderPianoVisualizer(selectedChord);
+        this.refreshHarmonyViews();
+      }
+      return;
+    }
+
+    if (action === "arrangement-close") {
+      this.state.selectedBarIndex = null;
+      this.state.selectedBarSectionId = null;
+      this.state.arrangementPaletteVisible = false;
+      this.state.arrangementBarMenuSectionId = null;
+      this.renderPianoVisualizer(null);
+      this.renderArrangementGrid();
+      return;
+    }
+
+    if (action === "arrangement-toggle-bar-menu") {
+      const sectionId = button.dataset.sectionId;
+      this.state.arrangementBarMenuSectionId =
+        this.state.arrangementBarMenuSectionId === sectionId ? null : sectionId;
+      this.renderArrangementGrid();
+      return;
+    }
+
+    if (action === "arrangement-add-visible-bars") {
+      const section = this.state.song.sections.find((entry) => entry.id === button.dataset.sectionId);
+      if (section) {
+        this.addArrangementVisibleBars(section);
+        this.persistSong();
+        this.refreshHarmonyViews();
+      }
+      return;
+    }
+
+    if (action === "arrangement-grow-section") {
+      const section = this.state.song.sections.find((entry) => entry.id === button.dataset.sectionId);
+      if (section) {
+        section.lengthInBars += 4;
+        this.persistSong();
+        this.renderAll();
+      }
+      return;
+    }
+
+    if (action === "arrangement-insert-section") {
+      const sectionId = button.dataset.sectionId;
+      const idx = this.state.song.sections.findIndex((entry) => entry.id === sectionId);
+      const newSection = createSection({
+        name: `Section ${this.state.song.sections.length + 1}`,
+        lengthInBars: 4,
+        chordLayout: "grid",
+      });
+      this.state.song.sections.splice(idx + 1, 0, newSection);
+      this.state.activeSectionId = newSection.id;
+      this.state.arrangementBarMenuSectionId = null;
+      this.persistSong();
+      this.renderAll();
+      return;
+    }
+
+    if (action === "arrangement-delete-section") {
+      const sectionId = button.dataset.sectionId;
+      if (this.state.song.sections.length <= 1) {
+        return;
+      }
+      const idx = this.state.song.sections.findIndex((entry) => entry.id === sectionId);
+      if (idx >= 0) {
+        this.state.song.sections.splice(idx, 1);
+        if (this.state.activeSectionId === sectionId) {
+          this.state.activeSectionId = this.state.song.sections[Math.max(0, idx - 1)]?.id || this.state.song.sections[0]?.id || null;
+        }
+        if (this.state.selectedBarSectionId === sectionId) {
+          this.state.selectedBarSectionId = null;
+          this.state.selectedBarIndex = null;
+        }
+        if (this.playback.loopSectionId === sectionId) {
+          this.playback.setLoopSection(null);
+        }
+        this.state.arrangementBarMenuSectionId = null;
+        this.persistSong();
+        this.renderAll();
+      }
+      return;
+    }
+
+    if (action === "dismiss-zoom") {
+      this.state.arrangementZoom = 1.0;
+      this.renderArrangementGrid();
+      return;
+    }
+
+    if (action === "arrangement-back") {
+      this.state.selectedBarIndex = null;
+      this.state.selectedBarSectionId = null;
+      this.state.arrangementPaletteVisible = false;
+      this.state.arrangementBarMenuSectionId = null;
+      this.renderPianoVisualizer(null);
+      this.refreshHarmonyViews();
+      return;
+    }
+
+    if (action === "arrangement-nav-start") {
+      const section = this.getActiveSection();
+      if (section) {
+        this.state.selectedBarIndex = 0;
+        this.state.selectedBarSectionId = section.id;
+        this.state.selectedChordIndex = 0;
+        const chord = section.chordProgression[0];
+        if (chord) this.auditionChord(chord);
+        this.renderPianoVisualizer(chord || null);
+        this.refreshHarmonyViews();
+      }
+      return;
+    }
+
+    if (action === "arrangement-nav-prev") {
+      if (this.state.selectedBarIndex !== null && this.state.selectedBarIndex > 0) {
+        const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+        if (section) {
+          this.state.selectedBarIndex -= 1;
+          this.state.selectedChordIndex = this.state.selectedBarIndex;
+          const chord = section.chordProgression[this.state.selectedBarIndex];
+          if (chord) this.auditionChord(chord);
+          this.renderPianoVisualizer(chord || null);
+          this.refreshHarmonyViews();
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-nav-next") {
+      const section = this.state.song.sections.find((s) => s.id === this.state.selectedBarSectionId);
+      if (section && this.state.selectedBarIndex !== null) {
+        const maxBars = Math.max(section.lengthInBars, section.chordProgression.length);
+        if (this.state.selectedBarIndex < maxBars - 1) {
+          this.state.selectedBarIndex += 1;
+          this.state.selectedChordIndex = this.state.selectedBarIndex;
+          const chord = section.chordProgression[this.state.selectedBarIndex];
+          if (chord) this.auditionChord(chord);
+          this.renderPianoVisualizer(chord || null);
+          this.refreshHarmonyViews();
+        }
+      }
+      return;
+    }
+
+    if (action === "arrangement-show-suggestions") {
+      this.renderSuggestions();
+      requestAnimationFrame(() => {
+        this.refs.suggestionRow?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
     }
   }
 
@@ -3634,9 +5328,19 @@ export class UIEditor {
     }
 
     if (button.dataset.action === "duplicate-selected-chord") {
-      const copy = createChord({ ...chord });
-      section.chordProgression.splice(index + 1, 0, copy);
-      this.state.selectedChordIndex = index + 1;
+      const copy = section.chordLayout === "grid"
+        ? this.duplicateArrangementChord(section, index)
+        : (() => {
+            const duplicated = createChord({ ...chord });
+            section.chordProgression.splice(index + 1, 0, duplicated);
+            return duplicated;
+          })();
+      if (!copy) return;
+      this.state.selectedChordIndex = section.chordLayout === "grid" ? copy.startBeat : index + 1;
+      if (section.chordLayout === "grid") {
+        this.state.selectedBarIndex = copy.startBeat;
+        this.state.selectedBarSectionId = section.id;
+      }
       this.persistSong();
       this.auditionChord(copy);
       this.renderPianoVisualizer(copy);
@@ -3645,36 +5349,60 @@ export class UIEditor {
     }
 
     if (button.dataset.action === "split-selected-chord") {
-      if (chord.durationInBeats <= 1) return;
-      const firstDuration = Math.max(1, Math.floor(chord.durationInBeats / 2));
-      const secondDuration = Math.max(1, chord.durationInBeats - firstDuration);
-      chord.durationInBeats = firstDuration;
-      chord.durationBeats = firstDuration;
-      const copy = createChord({ ...chord, durationInBeats: secondDuration, durationBeats: secondDuration });
-      section.chordProgression[index] = createChord(chord);
-      section.chordProgression.splice(index + 1, 0, copy);
+      const splitChord = section.chordLayout === "grid"
+        ? this.splitArrangementChord(section, index)
+        : (() => {
+            if (chord.durationInBeats <= 1) return null;
+            const firstDuration = Math.max(1, Math.floor(chord.durationInBeats / 2));
+            const secondDuration = Math.max(1, chord.durationInBeats - firstDuration);
+            chord.durationInBeats = firstDuration;
+            chord.durationBeats = firstDuration;
+            const copy = createChord({ ...chord, durationInBeats: secondDuration, durationBeats: secondDuration });
+            section.chordProgression[index] = createChord(chord);
+            section.chordProgression.splice(index + 1, 0, copy);
+            return section.chordProgression[index];
+          })();
+      if (!splitChord) return;
       this.state.selectedChordIndex = index;
+      if (section.chordLayout === "grid") {
+        this.state.selectedBarIndex = index;
+        this.state.selectedBarSectionId = section.id;
+      }
       this.persistSong();
-      this.renderPianoVisualizer(section.chordProgression[index]);
+      this.renderPianoVisualizer(splitChord);
       this.refreshHarmonyViews();
       return;
     }
 
     if (button.dataset.action === "merge-selected-chord") {
-      const next = section.chordProgression[index + 1];
-      if (!next) return;
-      chord.durationInBeats += next.durationInBeats;
-      chord.durationBeats = chord.durationInBeats;
-      section.chordProgression[index] = createChord(chord);
-      section.chordProgression.splice(index + 1, 1);
+      const mergedChord = section.chordLayout === "grid"
+        ? this.mergeArrangementChordWithNext(section, index)
+        : (() => {
+            const next = section.chordProgression[index + 1];
+            if (!next) return null;
+            chord.durationInBeats += next.durationInBeats;
+            chord.durationBeats = chord.durationInBeats;
+            section.chordProgression[index] = createChord(chord);
+            section.chordProgression.splice(index + 1, 1);
+            return section.chordProgression[index];
+          })();
+      if (!mergedChord) return;
+      if (section.chordLayout === "grid") {
+        this.state.selectedBarIndex = index;
+        this.state.selectedBarSectionId = section.id;
+      }
       this.persistSong();
-      this.renderPianoVisualizer(section.chordProgression[index]);
+      this.renderPianoVisualizer(mergedChord);
       this.refreshHarmonyViews();
       return;
     }
 
     if (button.dataset.action === "delete-selected-chord") {
-      section.chordProgression.splice(index, 1);
+      if (section.chordLayout === "grid") {
+        section.chordProgression[index] = null;
+      } else {
+        section.chordProgression.splice(index, 1);
+      }
       if (!section.chordProgression.length) {
         this.state.selectedChordIndex = null;
         this.renderPianoVisualizer(null);
@@ -3701,6 +5429,19 @@ export class UIEditor {
     if (field === "root") {
       chord.root = target.value;
     } else if (field === "durationInBeats") {
+      if (section.chordLayout === "grid") {
+        const updatedChord = this.setArrangementChordDuration(
+          section,
+          index,
+          Number.parseInt(target.value, 10) || getBeatsPerBar(this.state.song),
+        );
+        if (!updatedChord) return;
+        this.persistSong();
+        this.auditionChord(updatedChord);
+        this.renderPianoVisualizer(updatedChord);
+        this.refreshHarmonyViews();
+        return;
+      }
       chord.durationInBeats = clamp(
         Number.parseInt(target.value, 10) || getBeatsPerBar(this.state.song),
         1,
@@ -3731,6 +5472,19 @@ export class UIEditor {
       extension: button.dataset.extension || "",
       durationInBeats: Number.parseInt(button.dataset.duration, 10) || getBeatsPerBar(this.state.song),
     });
+    if (this.state.selectedBarIndex !== null && this.state.selectedBarSectionId === section.id) {
+      this.placeChordInArrangementBar(section, this.state.selectedBarIndex, chord);
+      this.auditionChord(chord);
+      this.persistSong();
+      this.refreshHarmonyViews();
+      this.renderPianoVisualizer(chord);
+      return;
+    }
+    if (this.isIphoneChordPlayerView() && section?.chordLayout === "grid") {
+      this.auditionChord(chord);
+      this.renderPianoVisualizer(chord);
+      return;
+    }
     section.chordProgression.push(chord);
     this.state.selectedChordIndex = section.chordProgression.length - 1;
     this.auditionChord(chord);
@@ -3925,9 +5679,38 @@ export class UIEditor {
     }
 
     const stepButton = event.target.closest("[data-tempo-dialog-step]");
-    if (!stepButton) return;
-    this.tempoDialogDirty = true;
-    this.updateTempoValue(this.state.song.tempo + (Number.parseInt(stepButton.dataset.tempoDialogStep, 10) || 0), { persist: false });
+    if (stepButton) {
+      this.tempoDialogDirty = true;
+      this.updateTempoValue(
+        this.state.song.tempo + (Number.parseInt(stepButton.dataset.tempoDialogStep, 10) || 0),
+        { persist: false },
+      );
+    }
+
+  }
+
+  handleKeyScaleDialogClick(event) {
+    if (event.target === this.refs.keyScaleDialog) {
+      this.closeKeyScaleDialog();
+      return;
+    }
+
+    const closeButton = event.target.closest("[data-key-scale-dialog-action='close']");
+    if (closeButton) {
+      this.closeKeyScaleDialog();
+    }
+  }
+
+  handleKeyScaleDialogChange(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    if (target.dataset.keyScaleField === "key") {
+      this.handleSongKeyChange(target.value);
+      return;
+    }
+    if (target.dataset.keyScaleField === "scale") {
+      this.handleSongScaleChange(target.value);
+    }
   }
 
   handleTempoDialogPointerDown(event) {
@@ -3971,18 +5754,40 @@ export class UIEditor {
 
   resetBlankSong() {
     this.closeTempoDialog({ persist: false, render: false });
+    this.closeKeyScaleDialog({ render: false });
+    this.playback.stop();
     this.state.song = createFallbackSong();
+    if (this.state.iphoneView === "chords") {
+      this.state.song.sections = this.state.song.sections.map((section) => ({
+        ...section,
+        chordLayout: "grid",
+        gridVisibleBars: section.lengthInBars || 4,
+      }));
+    }
     this.state.activeSectionId = this.state.song.sections[0]?.id || null;
     this.state.activeTab = "melody";
+    this.state.workspaceMode = "compose";
     this.clearNoteSelection();
     this.state.selectedChordIndex = null;
+    this.state.selectedLyricId = null;
     this.state.noteEditorLayer = "melody";
     this.state.paletteMode = "chords";
+    this.state.lyricsViewMode = "section";
+    this.state.selectedBarIndex = null;
+    this.state.selectedBarSectionId = null;
+    this.state.arrangementPaletteVisible = false;
+    this.state.arrangementBarMenuSectionId = null;
+    this.state.playheadBeat = 0;
+    this.state.playbackSectionId = null;
+    this.state.playbackChordIndex = null;
     this.state.ideaSuggestions = { song: null, progression: null, melody: null, chordsFromMelody: null };
     this.state.generator = generatorDefaults(this.state.song);
-    this.playback.stop();
+    this.undoStack = [];
+    this.redoStack = [];
     this.enableLoopForActiveSection();
-    this.persistSong();
+    this.persistSong({ recordHistory: false });
+    this.historySnapshot = this.captureHistoryEntry();
+    this.historySerialized = JSON.stringify(this.state.song);
     this.renderAll();
   }
 
@@ -3998,6 +5803,7 @@ export class UIEditor {
     }
 
     this.closeTempoDialog({ persist: false, render: false });
+    this.closeKeyScaleDialog({ render: false });
     this.playback.stop();
     this.state.song = sanitizeSong(cloneSong(projectData));
     this.state.activeSectionId = this.state.song.sections[0]?.id || null;
@@ -4101,6 +5907,7 @@ export class UIEditor {
           this.state.noteSelectionMode = nextMode;
           this.renderMelodyEditor();
         }
+        delete document.body.dataset.melodyToolsOpen;
         return;
       }
       if (actionButton?.dataset.action === "delete-selected-note") {
@@ -4163,6 +5970,7 @@ export class UIEditor {
       }
       if (actionButton?.dataset.action === "quantize-notes") {
         this.quantizeNotesToGrid();
+        delete document.body.dataset.melodyToolsOpen;
         return;
       }
       if (this.state.suppressNextEditorClick) {
@@ -4176,7 +5984,7 @@ export class UIEditor {
       }
       if (grid) {
         this.noteQuickPopupEnabled = false;
-        if (this.state.noteMultiSelectActive) {
+        if (this.getSelectedNoteIds().length > 0) {
           this.clearNoteSelection();
           this.renderMelodyEditor();
           return;
@@ -4352,11 +6160,13 @@ export class UIEditor {
     const target = event.target;
     if (this.state.activeTab === "melody" && target.dataset.action === "set-rhythm-snap-divisor") {
       this.state.rhythmSnapDivisor = Number.parseInt(target.value, 10) || DEFAULT_RHYTHM_SNAP_DIVISOR;
+      delete document.body.dataset.melodyToolsOpen;
       return;
     }
 
     if (this.state.activeTab === "melody" && target.dataset.action === "set-quantize-divisor") {
       this.state.quantizeDivisor = Number.parseInt(target.value, 10) || DEFAULT_QUANTIZE_DIVISOR;
+      delete document.body.dataset.melodyToolsOpen;
       return;
     }
 
@@ -4367,6 +6177,7 @@ export class UIEditor {
         this.applyLayoutMetrics();
         this.renderMelodyEditor();
       }
+      delete document.body.dataset.melodyToolsOpen;
       return;
     }
 
@@ -4473,7 +6284,11 @@ export class UIEditor {
     if (this.pendingQuickSelect?.timerId) {
       window.clearTimeout(this.pendingQuickSelect.timerId);
     }
+    if (this.pendingQuickSelect?.selectAllTimerId) {
+      window.clearTimeout(this.pendingQuickSelect.selectAllTimerId);
+    }
     this.pendingQuickSelect = null;
+    this.stopQuickSelectAutoScroll();
   }
 
   clearPendingGridTouchTap() {
@@ -4779,12 +6594,13 @@ export class UIEditor {
   }
 
   getNotePointerMode(noteBlock, event) {
+    if (this.state.noteMultiSelectActive) return "move";
     const noteId = noteBlock?.dataset?.noteId || null;
     const selectedIds = this.getNoteInteractionSelectionIds(noteId);
     if ((event.pointerType === "touch" || event.pointerType === "pen") && this.isNoteResizeDragArmed(selectedIds)) {
       return "resize";
     }
-    if (event.target.closest(".resize-handle")) return "resize";
+    if (event.target.closest(".note-handle--right")) return "resize";
     if (event.pointerType === "touch" || event.pointerType === "pen") return "move";
     const rect = noteBlock.getBoundingClientRect();
     const resizeZoneWidth = 14;
@@ -4885,6 +6701,7 @@ export class UIEditor {
     gesture.lastAppliedPoint = gesture.currentPoint || gesture.startPoint;
     this.quickSelectState = gesture;
     this.applyQuickSelectGesture(gesture);
+    this.startQuickSelectAutoScroll();
   }
 
   updateQuickSelectOverlay(gesture = this.quickSelectState) {
@@ -4918,6 +6735,57 @@ export class UIEditor {
       ></div>
     `;
     layer.classList.remove("hidden");
+  }
+
+  startQuickSelectAutoScroll() {
+    if (this.quickSelectAutoScrollRaf) return;
+    const tick = () => {
+      this.quickSelectAutoScrollRaf = null;
+      const gesture = this.pendingQuickSelect || this.quickSelectState;
+      if (!gesture?.longPressTriggered) return;
+      const scrollEl = this.refs.editorSurface?.querySelector(".grid-scroll");
+      if (!scrollEl) return;
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const clientX = gesture.currentPoint?.clientX ?? gesture.startX;
+      const edgeZone = 40;
+      const maxSpeed = 12;
+      let scrollDelta = 0;
+      if (clientX < scrollRect.left + edgeZone) {
+        scrollDelta = -maxSpeed * (1 - (clientX - scrollRect.left) / edgeZone);
+      } else if (clientX > scrollRect.right - edgeZone) {
+        scrollDelta = maxSpeed * (1 - (scrollRect.right - clientX) / edgeZone);
+      }
+      if (Math.abs(scrollDelta) > 0.5) {
+        scrollEl.scrollLeft = clamp(
+          scrollEl.scrollLeft + scrollDelta,
+          0,
+          Math.max(0, scrollEl.scrollWidth - scrollEl.clientWidth),
+        );
+        // Recalculate local point after scroll
+        const grid = gesture.element;
+        if (grid && gesture.currentPoint) {
+          const gridRect = grid.getBoundingClientRect();
+          gesture.currentPoint.localX = clamp(gesture.currentPoint.clientX - gridRect.left, 0, gridRect.width);
+          gesture.currentPoint.localY = clamp(gesture.currentPoint.clientY - gridRect.top, 0, gridRect.height);
+        }
+        // Re-fetch note targets since positions changed
+        if (grid) {
+          gesture.noteTargets = this.getQuickSelectNoteTargets(grid);
+        }
+        this.applyQuickSelectGesture(gesture);
+      }
+      if (gesture.longPressTriggered) {
+        this.quickSelectAutoScrollRaf = requestAnimationFrame(tick);
+      }
+    };
+    this.quickSelectAutoScrollRaf = requestAnimationFrame(tick);
+  }
+
+  stopQuickSelectAutoScroll() {
+    if (this.quickSelectAutoScrollRaf) {
+      cancelAnimationFrame(this.quickSelectAutoScrollRaf);
+      this.quickSelectAutoScrollRaf = null;
+    }
   }
 
   applyQuickSelectGesture(gesture = this.quickSelectState) {
@@ -5005,6 +6873,8 @@ export class UIEditor {
   createQuickSelectGesture({ clientX, clientY, pointerType, pointerId = null, grid }) {
     const startPoint = this.getMelodyGridClientPoint(clientX, clientY, grid);
     if (!startPoint) return null;
+    const selectedIdsAtStart = this.getSelectedNoteIds();
+    const allNoteIdsAtStart = this.getActiveRollNotes().map((note) => note.id);
     return {
       pointerId,
       element: grid,
@@ -5016,7 +6886,9 @@ export class UIEditor {
       lastAppliedPoint: startPoint,
       radius: this.getQuickSelectBrushRadius(pointerType || "mouse"),
       noteTargets: [],
-      selectedIds: new Set(this.getSelectedNoteIds()),
+      selectedIds: new Set(selectedIdsAtStart),
+      selectedIdsAtStart,
+      allNoteIdsAtStart,
       selectionMode: this.state.noteSelectionMode || "magnetic",
       lastTouchedNoteId: this.state.selectedNoteId || null,
       engagedIds: new Set(),
@@ -5024,7 +6896,54 @@ export class UIEditor {
       forceRefresh: false,
       longPressTriggered: false,
       timerId: null,
+      selectAllTimerId: null,
+      holdToggleSelectAll: true,
     };
+  }
+
+  clearQuickSelectSelectAllTimer(gesture = this.pendingQuickSelect) {
+    if (!gesture?.selectAllTimerId) return;
+    window.clearTimeout(gesture.selectAllTimerId);
+    gesture.selectAllTimerId = null;
+  }
+
+  updateQuickSelectHoldToggleState(gesture, point = gesture?.currentPoint || gesture?.startPoint) {
+    if (!gesture?.holdToggleSelectAll || !point) return;
+    const travel = Math.hypot(point.clientX - gesture.startX, point.clientY - gesture.startY);
+    if (travel <= NOTE_SELECT_ALL_HOLD_MOVE_DISTANCE) return;
+    gesture.holdToggleSelectAll = false;
+    this.clearQuickSelectSelectAllTimer(gesture);
+  }
+
+  completeQuickSelectHoldToggle(gesture) {
+    if (!gesture) return;
+    const allNoteIdsAtStart = [...(gesture.allNoteIdsAtStart || [])];
+    const selectedAtStart = new Set(gesture.selectedIdsAtStart || []);
+    const startedWithAllSelected = allNoteIdsAtStart.length > 0
+      && allNoteIdsAtStart.length === selectedAtStart.size
+      && allNoteIdsAtStart.every((noteId) => selectedAtStart.has(noteId));
+    try { gesture.element?.releasePointerCapture?.(gesture.pointerId); } catch (error) {}
+    this.clearPendingQuickSelect();
+    this.clearPendingGridTouchTap();
+    this.clearEditorScrollTouchState();
+    this.quickSelectState = null;
+    this.updateQuickSelectOverlay(null);
+    this.setMelodyInteractionLock(false);
+    this.state.suppressNextEditorClick = true;
+    this.toggleSelectAllActiveNotes({ shouldClear: startedWithAllSelected });
+    if (!this.state.pendingNotePress && !this.dragState) {
+      this.removeNotePointerListeners();
+    }
+  }
+
+  scheduleQuickSelectHoldToggle(gesture) {
+    if (!gesture) return;
+    this.clearQuickSelectSelectAllTimer(gesture);
+    gesture.selectAllTimerId = window.setTimeout(() => {
+      const isActiveGesture = this.pendingQuickSelect === gesture || this.quickSelectState === gesture;
+      if (!isActiveGesture || !gesture.holdToggleSelectAll) return;
+      this.completeQuickSelectHoldToggle(gesture);
+    }, NOTE_SELECT_ALL_HOLD_MS);
   }
 
   startPendingQuickSelect(event, grid) {
@@ -5049,6 +6968,7 @@ export class UIEditor {
       this.activateQuickSelectGesture(gesture);
     }
     this.pendingQuickSelect = gesture;
+    this.scheduleQuickSelectHoldToggle(gesture);
     this.addNotePointerListeners();
   }
 
@@ -5067,6 +6987,7 @@ export class UIEditor {
       this.activateQuickSelectGesture(gesture);
     }, NOTE_MULTI_SELECT_HOLD_MS);
     this.pendingQuickSelect = gesture;
+    this.scheduleQuickSelectHoldToggle(gesture);
     this.quickSelectState = null;
   }
 
@@ -5180,6 +7101,7 @@ export class UIEditor {
         this.pendingQuickSelect.element,
       );
       if (point) {
+        this.updateQuickSelectHoldToggleState(this.pendingQuickSelect, point);
         this.pendingQuickSelect.currentPoint = point;
         if (this.pendingQuickSelect.longPressTriggered) {
           this.clearEditorScrollTouchState();
@@ -5320,15 +7242,27 @@ export class UIEditor {
       this.setMelodyInteractionLock(false);
       this.state.suppressNextEditorClick = true;
       if (!didQuickSelect && tapState?.grid && tapPoint && !tapState.moved && !tapDidScroll) {
-        this.addNoteFromGrid({
-          clientX: tapPoint.clientX,
-          clientY: tapPoint.clientY,
-        }, tapState.grid);
+        if (this.getSelectedNoteIds().length > 0) {
+          this.noteQuickPopupEnabled = false;
+          this.clearNoteSelection();
+          this.renderMelodyEditor();
+        } else {
+          this.addNoteFromGrid({
+            clientX: tapPoint.clientX,
+            clientY: tapPoint.clientY,
+          }, tapState.grid);
+        }
       } else if (!didQuickSelect && !tapState && gesture?.element && gesturePoint) {
-        this.addNoteFromGrid({
-          clientX: gesturePoint.clientX,
-          clientY: gesturePoint.clientY,
-        }, gesture.element);
+        if (this.getSelectedNoteIds().length > 0) {
+          this.noteQuickPopupEnabled = false;
+          this.clearNoteSelection();
+          this.renderMelodyEditor();
+        } else {
+          this.addNoteFromGrid({
+            clientX: gesturePoint.clientX,
+            clientY: gesturePoint.clientY,
+          }, gesture.element);
+        }
       }
       return;
     }
@@ -5498,10 +7432,63 @@ export class UIEditor {
       copyOnDrop,
       consumeResizeArm,
       moved: false,
+      ghostElements: [],
     };
 
+    this.createDragGhosts();
     try { noteBlock.setPointerCapture(event.pointerId); } catch (error) {}
     this.addNotePointerListeners();
+  }
+
+  createDragGhosts() {
+    if (!this.dragState || this.dragState.type !== "note") return;
+    const grid = this.refs.editorSurface.querySelector("#melody-grid");
+    if (!grid) return;
+    const { beatWidth, rowHeight } = this.layoutMetrics;
+    const visiblePitches = this.getVisiblePitchRange();
+    const isCopy = this.dragState.copyOnDrop;
+
+    this.dragState.noteIds.forEach((noteId) => {
+      const original = this.dragState.originalNotes?.[noteId];
+      if (!original) return;
+      const ghost = document.createElement("div");
+      ghost.className = `drag-ghost-note ${isCopy ? "copy-ghost" : "move-ghost"}`;
+      const top = original.pitchIndex * rowHeight + 2;
+      const width = Math.max(18, original.duration * beatWidth - 4);
+      ghost.style.cssText = `left:${original.startBeat * beatWidth + 2}px;top:${top}px;width:${width}px;height:${rowHeight - 4}px`;
+      ghost.dataset.ghostNoteId = noteId;
+      grid.appendChild(ghost);
+      this.dragState.ghostElements.push(ghost);
+    });
+  }
+
+  updateDragGhosts() {
+    if (!this.dragState?.ghostElements?.length) return;
+    const { beatWidth, rowHeight } = this.layoutMetrics;
+    const isResize = this.dragState.mode === "resize";
+
+    this.dragState.ghostElements.forEach((ghost) => {
+      const noteId = ghost.dataset.ghostNoteId;
+      const original = this.dragState.originalNotes?.[noteId];
+      if (!original) return;
+      if (isResize) {
+        // Ghost stays at original size for resize comparison
+        ghost.style.left = `${original.startBeat * beatWidth + 2}px`;
+        ghost.style.top = `${original.pitchIndex * rowHeight + 2}px`;
+        ghost.style.width = `${Math.max(18, original.duration * beatWidth - 4)}px`;
+      } else {
+        // Move/Copy: ghost stays at original position, real note moves to destination
+        ghost.style.left = `${original.startBeat * beatWidth + 2}px`;
+        ghost.style.top = `${original.pitchIndex * rowHeight + 2}px`;
+        ghost.style.width = `${Math.max(18, original.duration * beatWidth - 4)}px`;
+      }
+    });
+  }
+
+  removeDragGhosts() {
+    if (!this.dragState?.ghostElements) return;
+    this.dragState.ghostElements.forEach((ghost) => ghost.remove());
+    this.dragState.ghostElements = [];
   }
 
   handleEditorPointerDown(event) {
@@ -5524,9 +7511,10 @@ export class UIEditor {
 
     event.preventDefault();
     const selectedIds = this.getNoteInteractionSelectionIds(noteId);
-    const touchedResizeHandle = Boolean(event.target.closest(".resize-handle"));
+    const touchedResizeHandle = Boolean(event.target.closest(".note-handle--right"));
     const isTouchResizeArmGesture = touchedResizeHandle
       && (event.pointerType === "touch" || event.pointerType === "pen")
+      && !this.state.noteMultiSelectActive
       && !this.isNoteResizeDragArmed(selectedIds);
     if (isTouchResizeArmGesture) {
       this.armSelectedNotesForResizeDrag(selectedIds, {
@@ -5581,6 +7569,7 @@ export class UIEditor {
       const point = this.getMelodyGridPointerPoint(event, gesture.element);
       if (!point) return;
       if (event.cancelable) event.preventDefault();
+      this.updateQuickSelectHoldToggleState(gesture, point);
       if (!gesture.longPressTriggered && gesture.pointerType === "touch") {
         gesture.currentPoint = point;
         this.quickSelectState = gesture;
@@ -5635,10 +7624,11 @@ export class UIEditor {
       const originalNotes = Object.values(this.dragState.originalNotes || {});
       if (!originalNotes.length) return;
       const minDuration = this.getMinimumMelodyStepDuration();
+      const overflowAllowance = this.getRhythmSnapStepBeats();
       const clampedBeatDelta = clamp(
         beatDelta,
         -Math.min(...originalNotes.map((entry) => Math.max(0, entry.duration - minDuration))),
-        Math.min(...originalNotes.map((entry) => Math.max(0, sectionBeats - entry.startBeat - entry.duration))),
+        Math.min(...originalNotes.map((entry) => Math.max(0, sectionBeats + overflowAllowance - entry.startBeat - entry.duration))),
       );
       this.dragState.noteIds.forEach((noteId) => {
         const note = this.getActiveRollNotes().find((entry) => entry.id === noteId);
@@ -5647,7 +7637,7 @@ export class UIEditor {
         note.duration = clamp(
           original.duration + clampedBeatDelta,
           minDuration,
-          Math.max(minDuration, sectionBeats - original.startBeat),
+          Math.max(minDuration, sectionBeats + overflowAllowance - original.startBeat),
         );
         note.startBeat = original.startBeat;
         this.updateDraggedNoteElement(note);
@@ -5678,6 +7668,7 @@ export class UIEditor {
         this.updateDraggedNoteElement(note);
       });
     }
+    this.updateDragGhosts();
   }
 
   handlePointerUp(event) {
@@ -5721,9 +7712,15 @@ export class UIEditor {
 
     if (this.dragState?.type === "note") {
       try { this.dragState.element?.releasePointerCapture?.(this.dragState.pointerId); } catch (error) {}
+      this.removeDragGhosts();
       this.finalizeCopiedNoteDrag();
       if (this.dragState.consumeResizeArm) {
         this.clearPendingNoteResizeDrag();
+      }
+      // Save last resized note duration for mimicking
+      if (this.dragState.mode === "resize" && this.dragState.noteIds?.length) {
+        const resizedNote = this.getActiveRollNotes().find((n) => n.id === this.dragState.noteIds[0]);
+        if (resizedNote) this.state.lastPlacedNoteDuration = resizedNote.duration;
       }
       this.setActiveRollNotes(sortNotes(this.getActiveRollNotes()));
       this.persistSong();
@@ -5832,10 +7829,11 @@ export class UIEditor {
     popup.className = "note-quick-popup";
     popup.style.left = `${left}px`;
     popup.style.top = `${top}px`;
-    const resizeArmed = this.isNoteResizeDragArmed();
+    const canResizeSelection = this.canResizeSelectedNotes(this.getSelectedNoteIds(section));
+    const resizeArmed = canResizeSelection && this.isNoteResizeDragArmed();
     const copyArmed = this.isNoteCopyDragArmed();
     popup.innerHTML = `
-      <button class="nqp-btn ${resizeArmed ? "nqp-armed" : ""}" data-action="arm-selected-note-resize-drag" title="Stretch next drag">
+      <button class="nqp-btn ${resizeArmed ? "nqp-armed" : ""}" data-action="arm-selected-note-resize-drag" title="${canResizeSelection ? "Stretch next drag" : "Resize is only available for a single note"}"${canResizeSelection ? "" : " disabled"}>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2.5 8h11"></path>
           <path d="m5 5.5-2.5 2.5L5 10.5"></path>
@@ -5908,6 +7906,7 @@ export class UIEditor {
     if (this.state.noteEditorLayer === "bass") {
       section.bassNotesInitialized = true;
     }
+    this.state.lastPlacedNoteDuration = defaultDuration;
     this.setActiveRollNotes(sortNotes([...this.getActiveRollNotes(section), note]), section);
     this.setSelectedNotes([note.id], { primaryId: note.id, multiSelect: false });
     this.persistSong();
@@ -5975,7 +7974,7 @@ export class UIEditor {
     const section = this.getActiveSection();
     const activeNotes = this.getActiveRollNotes(section);
     const lastNote = activeNotes[activeNotes.length - 1];
-    const activeChord = section.chordProgression[section.chordProgression.length - 1];
+    const activeChord = getLastFilledChord(section.chordProgression);
     const chordTones = activeChord ? getChordToneClasses(activeChord) : [getNoteIndex(this.state.song.key)];
     const pitchBase = lastNote?.pitch ?? 67;
     const pitchClass = chordTones[0] ?? getNoteIndex(this.state.song.key);

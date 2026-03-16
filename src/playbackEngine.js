@@ -1,6 +1,6 @@
 import { createDrumPercLane, createDrumSequence, getBeatsPerBar, getDrumPatternBars } from "./dataModel.js";
 import { ensurePlaybackAudioMode, primeAudioContext, releasePlaybackAudioMode } from "./audioSession.js";
-import { chordToMidi, getChordToneClasses } from "./musicTheoryEngine.js";
+import { buildChordGridTimeline, chordToMidi, getChordToneClasses } from "./musicTheoryEngine.js";
 
 const DRUM_PATTERNS = {
   minimal: {
@@ -154,11 +154,29 @@ export function buildSectionChordTimeline(section, song, sectionStartBeat = 0) {
   const beatsPerBar = getBeatsPerBar(song);
   const sectionBeats = section.lengthInBars * beatsPerBar;
   const chords = section.chordProgression.length > 0 ? section.chordProgression : [];
+
+  if (section.chordLayout === "grid") {
+    return buildChordGridTimeline(section, song).map((event) => ({
+      chord: event.chord,
+      chordIndex: event.index,
+      localStartBeat: event.startBeat,
+      localEndBeat: event.endBeat,
+      startBeat: sectionStartBeat + event.startBeat,
+      endBeat: sectionStartBeat + event.endBeat,
+      sectionId: section.id,
+      sectionName: section.name,
+    }));
+  }
+
   const timeline = [];
   let cursor = 0;
 
   chords.forEach((chord, index) => {
     if (cursor >= sectionBeats) {
+      return;
+    }
+    if (!chord) {
+      cursor += beatsPerBar;
       return;
     }
 
@@ -743,11 +761,14 @@ export function findSectionAtBeat(performance, beat) {
 }
 
 export function findChordAtBeat(performance, beat) {
-  return (
-    performance.chordTimeline.find((event) => beat >= event.startBeat && beat < event.endBeat) ||
-    performance.chordTimeline[performance.chordTimeline.length - 1] ||
-    null
-  );
+  const activeEvent = performance.chordTimeline.find((event) => beat >= event.startBeat && beat < event.endBeat);
+  if (activeEvent) {
+    return activeEvent;
+  }
+  if (performance.chordTimeline[0] && beat < performance.chordTimeline[0].startBeat) {
+    return null;
+  }
+  return performance.chordTimeline[performance.chordTimeline.length - 1] || null;
 }
 
 function createNoiseBuffer(context) {
@@ -772,7 +793,11 @@ function scheduleMelodicVoice(context, destination, event, startTime, beatDurati
   const oscillator = context.createOscillator();
   const gain = context.createGain();
   const filter = context.createBiquadFilter();
-  const durationSeconds = Math.max(0.04, event.durationBeats * beatDuration);
+  const rawDurationSeconds = Math.max(0.04, event.durationBeats * beatDuration);
+  const isChordTrack = event.track === "chords";
+  const durationSeconds = isChordTrack
+    ? Math.max(rawDurationSeconds + Math.min(0.26, rawDurationSeconds * 0.45), 0.92)
+    : rawDurationSeconds;
   const frequency = midiToFrequency(event.pitch);
   const baseVelocity = event.velocity ?? 0.7;
 
@@ -784,11 +809,19 @@ function scheduleMelodicVoice(context, destination, event, startTime, beatDurati
   filter.frequency.setValueAtTime(event.track === "bass" ? 900 : 1800, startTime);
 
   gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.linearRampToValueAtTime(
-    event.track === "chords" ? baseVelocity * 0.14 : baseVelocity * 0.22,
-    startTime + 0.02,
-  );
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationSeconds + 0.04);
+  if (isChordTrack) {
+    const peakGain = baseVelocity * 0.15;
+    const sustainGain = peakGain * 0.78;
+    const releaseTime = Math.min(0.36, Math.max(0.18, durationSeconds * 0.24));
+    const releaseStart = Math.max(startTime + 0.12, startTime + durationSeconds - releaseTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.02);
+    gain.gain.linearRampToValueAtTime(sustainGain, startTime + 0.1);
+    gain.gain.setValueAtTime(sustainGain, releaseStart);
+    gain.gain.exponentialRampToValueAtTime(0.0001, releaseStart + releaseTime);
+  } else {
+    gain.gain.linearRampToValueAtTime(baseVelocity * 0.22, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationSeconds + 0.04);
+  }
 
   oscillator.connect(filter);
   filter.connect(gain);

@@ -1,4 +1,5 @@
 import { buildPerformance, scheduleSynthEvent } from "./playbackEngine.js";
+import { getChordDisplayName } from "./musicTheoryEngine.js";
 
 const PPQ = 480;
 
@@ -190,17 +191,15 @@ export function exportTextSheet(song, format = "chords-lyrics") {
   song.sections.forEach((section) => {
     lines.push(`[${section.name}] ${section.lengthInBars} bars`);
     if (format !== "lyrics") {
-      const chords = (section.chordProgression || []).map((chord) => {
-        const quality =
-          chord.quality === "minor"
-            ? "m"
-            : chord.quality === "diminished"
-              ? "dim"
-              : chord.quality === "augmented"
-                ? "aug"
-                : "";
-        return `${chord.root}${quality}${chord.extension || ""}`;
-      });
+      const visibleChordCount = Math.max(section.lengthInBars || 0, section.chordProgression?.length || 0);
+      const chords = Array.from({ length: visibleChordCount }, (_, index) => {
+        const chord = section.chordProgression?.[index] || null;
+        if (!chord) {
+          return "—";
+        }
+        const label = getChordDisplayName(chord);
+        return index >= section.lengthInBars ? `(${label})` : label;
+      }).filter(Boolean);
       lines.push(chords.length ? chords.join(" | ") : "(no chords yet)");
     }
     if (format !== "chords") {

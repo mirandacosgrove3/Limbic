@@ -595,6 +595,86 @@ input:disabled {
   margin: 4px 0 0;
 }
 
+/* ===== Editor Tempo Control (inline in panel head) ===== */
+
+.editor-tempo-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.editor-tempo-readout,
+.editor-key-scale-readout {
+  appearance: none;
+  border: 1px solid rgba(255, 214, 219, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(0, 0, 0, 0.16);
+  font-weight: 700;
+  color: var(--accent-2);
+  min-height: 32px;
+  user-select: none;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.editor-tempo-readout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+
+.editor-tempo-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.editor-key-scale-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 108px;
+  padding: 6px 10px 6px 9px;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.editor-key-scale-glow {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.96) 0%, rgba(255, 167, 174, 0.92) 48%, rgba(255, 140, 149, 0.12) 100%);
+  box-shadow:
+    0 0 14px rgba(255, 140, 149, 0.56),
+    0 0 0 1px rgba(255, 214, 219, 0.18);
+}
+
+.editor-key-scale-readout-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-tempo-readout:active,
+.editor-key-scale-readout:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* ===== CHORD PALETTE (ChordButter hero element) ===== */
 
 .chord-palette-panel {
@@ -607,6 +687,21 @@ input:disabled {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.palette-tempo-launch {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 214, 219, 0.12);
+  background: rgba(255, 244, 244, 0.08);
+  color: var(--accent-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .chord-palette {
@@ -680,6 +775,67 @@ input:disabled {
 
 .palette-chip.borrowed:hover {
   border-color: rgba(255, 193, 198, 0.52);
+}
+
+.chord-player-status {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.chord-player-status.hidden,
+.chord-player-suggestion-row.hidden {
+  display: none !important;
+}
+
+.chord-player-status .small-copy {
+  margin: 0;
+}
+
+.chord-player-status-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 176, 183, 0.28);
+  background: rgba(255, 244, 244, 0.08);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chord-player-status-pill.is-armed {
+  border-color: rgba(71, 214, 167, 0.32);
+  background: rgba(71, 214, 167, 0.14);
+}
+
+.chord-player-group {
+  display: grid;
+  gap: 8px;
+}
+
+.chord-player-group-label {
+  margin: 0;
+  padding: 0 8px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chord-player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 8px;
+}
+
+.chord-player-suggestion-row {
+  margin-top: 12px;
 }
 
 .drum-palette-toolbar {
@@ -1428,88 +1584,96 @@ input:disabled {
   margin-top: 14px;
 }
 
-.tempo-dialog-overlay {
-  align-items: center;
-  padding: 24px 12px;
-  background: rgba(10, 10, 12, 0.52);
+.tempo-dialog-overlay,
+.key-scale-dialog-overlay {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.tempo-dialog-card {
-  width: min(320px, 100%);
+.tempo-dialog-card,
+.key-scale-dialog-card {
+  position: fixed;
+  width: min(248px, calc(100vw - 24px));
   max-height: none;
   padding: 0;
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+  background: rgba(30, 19, 24, 0.98);
+  border: 1px solid rgba(255, 214, 219, 0.16);
+  border-radius: 20px;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-.tempo-dialog-surface {
+.tempo-dialog-surface,
+.key-scale-dialog-surface {
   margin-top: 0;
 }
 
 .tempo-dialog-shell {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .tempo-dialog-head {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .tempo-dialog-title-block {
-  grid-column: 2;
-  text-align: center;
+  min-width: 0;
 }
 
 .tempo-dialog-kicker {
   margin: 0;
-  color: rgba(235, 235, 245, 0.58);
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
+  color: rgba(255, 214, 219, 0.54);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .tempo-dialog-head h2 {
-  margin: 2px 0 0;
-  font-size: 1.02rem;
+  margin: 4px 0 0;
+  font-size: 0.96rem;
   font-weight: 700;
-  color: #f5f5f7;
+  color: #fff4f4;
 }
 
 .tempo-dialog-done {
-  grid-column: 3;
-  justify-self: end;
-  min-height: 0;
-  padding: 4px 2px;
-  border-radius: 10px;
-  background: transparent;
-  color: #4aa2ff;
-  font-size: 0.96rem;
-  font-weight: 600;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent-2);
+  font-size: 0.74rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 214, 219, 0.12);
 }
 
 .tempo-dialog-display {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: 14px 12px;
-  border-radius: 18px;
-  background: #2a2a2d;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0 0;
 }
 
 .tempo-dialog-unit {
-  color: rgba(235, 235, 245, 0.55);
-  font-size: 0.72rem;
+  color: rgba(255, 214, 219, 0.5);
+  font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .tempo-dialog-value {
-  color: #f5f5f7;
-  font-size: 2rem;
+  color: #fff4f4;
+  font-size: 1.78rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -1521,13 +1685,62 @@ input:disabled {
 }
 
 .tempo-dialog-step {
-  min-height: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #2a2a2d;
-  color: #f5f5f7;
-  font-size: 1.15rem;
-  font-weight: 600;
+  min-height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 214, 219, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff4f4;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.tempo-dialog-step:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.key-scale-dialog-shell {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.key-scale-dialog-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.key-scale-dialog-field {
+  display: grid;
+  gap: 6px;
+}
+
+.key-scale-dialog-label {
+  color: rgba(255, 214, 219, 0.56);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.key-scale-dialog-select {
+  appearance: none;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 214, 219, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff4f4;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.key-scale-dialog-select:focus {
+  outline: none;
+  border-color: rgba(255, 140, 149, 0.42);
+  box-shadow: 0 0 0 2px rgba(255, 140, 149, 0.12);
 }
 
 .tempo-dial {
@@ -1923,12 +2136,12 @@ body[data-touch="true"].melody-interaction-locked {
 
 .note-block {
   position: absolute;
-  border-radius: 10px;
+  border-radius: 5px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 5px 3px 8px;
+  padding: 3px 8px;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
   touch-action: none;
@@ -1971,60 +2184,84 @@ body[data-touch="true"].melody-interaction-locked {
   border-style: dashed;
 }
 
-.note-label {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 700;
-  pointer-events: none;
-  transform-origin: left center;
-  transform: scaleX(var(--live-note-label-scale, 1));
-  white-space: nowrap;
+.note-block.off-grid::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 2px,
+    var(--accent) 2px,
+    var(--accent) 3px
+  );
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  opacity: 0.7;
 }
 
-.resize-handle {
-  position: relative;
-  width: 11px;
-  height: 100%;
-  border-radius: 0 8px 8px 0;
-  background: rgba(0, 0, 0, 0.12);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+.note-label {
+  display: none;
+}
+
+/* Note handles — small rounded rectangles on left and right */
+.note-handle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 60%;
+  max-height: 18px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
   touch-action: none;
   cursor: ew-resize;
   flex-shrink: 0;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  opacity: 0;
+  z-index: 2;
+}
+.note-handle--left {
+  left: 3px;
+}
+.note-handle--right {
+  right: 3px;
+}
+.note-block:hover .note-handle,
+.note-block.active .note-handle {
+  opacity: 1;
 }
 
-/* Three vertical grip dots */
-.resize-handle::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow:
-    0 -5px 0 rgba(255, 255, 255, 0.5),
-    0  5px 0 rgba(255, 255, 255, 0.5);
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* Armed state — amber edge */
-.note-block.resize-armed .resize-handle {
-  background: rgba(255, 200, 100, 0.22);
-  border-left-color: rgba(255, 214, 142, 0.55);
-}
-
-.note-block.resize-armed .resize-handle::before {
+/* Armed state — amber handles */
+.note-block.resize-armed .note-handle {
   background: rgba(255, 214, 142, 0.9);
-  box-shadow:
-    0 -5px 0 rgba(255, 214, 142, 0.9),
-    0  5px 0 rgba(255, 214, 142, 0.9);
+  opacity: 1;
 }
 
 /* Active resize drag — right-side glow */
+/* Drag ghost — semi-transparent preview of note destination */
+.drag-ghost-note {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 5;
+  transition: none;
+}
+
+.drag-ghost-note.move-ghost {
+  background: rgba(255, 176, 183, 0.35);
+  border: 2px dashed rgba(255, 176, 183, 0.65);
+  box-shadow: 0 0 12px rgba(255, 176, 183, 0.15);
+}
+
+.drag-ghost-note.copy-ghost {
+  background: rgba(176, 220, 255, 0.25);
+  border: 2px dashed rgba(176, 220, 255, 0.55);
+  box-shadow: 0 0 12px rgba(176, 220, 255, 0.15);
+}
+
 .note-block.is-resizing {
   box-shadow:
     0 0 0 2px rgba(255, 176, 183, 0.24),
@@ -2032,25 +2269,14 @@ body[data-touch="true"].melody-interaction-locked {
     0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.note-block.is-resizing .resize-handle {
-  background: rgba(255, 255, 255, 0.18);
-  border-left-color: rgba(255, 255, 255, 0.28);
-}
-
-.note-block.is-resizing .resize-handle::before {
+.note-block.is-resizing .note-handle {
   background: rgba(255, 255, 255, 0.85);
-  box-shadow:
-    0 -5px 0 rgba(255, 255, 255, 0.85),
-    0  5px 0 rgba(255, 255, 255, 0.85);
+  opacity: 1;
 }
 
-body[data-touch="true"] .resize-handle {
-  width: 18px;
-  min-width: 18px;
-}
-
-body[data-touch="true"] .note-block {
-  padding-right: 4px;
+body[data-touch="true"] .note-handle {
+  width: 6px;
+  opacity: 1;
 }
 
 .playhead-line {
@@ -2221,9 +2447,6 @@ body[data-touch="true"] .note-block {
     min-height: 56px;
   }
 
-  .resize-handle {
-    width: 14px;
-  }
 }
 
 @media (max-width: 1024px) {
@@ -2511,10 +2734,10 @@ body[data-layout-profile="iphone"] .top-shell {
   border-radius: 0;
   border: none;
   box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  background: var(--bg-1);
-  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  background: rgba(22, 12, 15, 0.42);
+  border-bottom: 1px solid rgba(255, 214, 219, 0.08);
   padding: 6px 12px;
 }
 
@@ -2629,7 +2852,9 @@ body[data-layout-profile="iphone"] .panel {
   border-radius: 0;
   border: none;
   box-shadow: none;
-  background: var(--bg-1);
+  background: rgba(23, 13, 16, 0.68);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   padding: 8px 12px;
   animation: none;
 }
@@ -3065,8 +3290,8 @@ body[data-layout-profile="iphone"] .dialog-overlay {
 }
 
 body[data-layout-profile="iphone"] .tempo-dialog-overlay {
-  padding: calc(18px + var(--safe-top)) 16px calc(18px + var(--safe-bottom));
-  align-items: center;
+  padding: 0;
+  align-items: flex-start;
 }
 
 body[data-layout-profile="iphone"] .dialog-card {
@@ -3077,9 +3302,9 @@ body[data-layout-profile="iphone"] .dialog-card {
 }
 
 body[data-layout-profile="iphone"] .tempo-dialog-card {
-  width: min(320px, 100%);
+  width: min(248px, calc(100vw - 24px));
   max-height: none;
-  border-radius: 22px;
+  border-radius: 20px;
   padding: 0;
 }
 
@@ -3089,8 +3314,15 @@ body[data-layout-profile="iphone"] .drum-step {
   min-width: 0;
 }
 
-body[data-layout-profile="iphone"] .note-layer-switch,
+body[data-layout-profile="iphone"] .selection-mode-switch {
+  grid-column: 1 / -1;
+}
+
 body[data-layout-profile="iphone"] .melody-toolbar > .action-button {
+  min-width: 0;
+}
+
+body[data-layout-profile="iphone"] .melody-toolbar > .action-button:last-of-type {
   grid-column: 1 / -1;
 }
 
@@ -3104,7 +3336,7 @@ body[data-layout-profile="iphone"] .note-label {
 }
 
 body[data-layout-profile="iphone"] .note-block {
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 4px 5px 4px 8px;
 }
 
@@ -3211,21 +3443,20 @@ body[data-layout-profile="iphone"] .insert-button {
 }
 
 body[data-layout-profile="iphone"] .bottom-bar {
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 6px;
+  right: 6px;
+  bottom: calc(8px + var(--safe-bottom));
   width: auto;
   transform: none;
   border: none;
-  border-radius: 0;
-  border-top: 1px solid var(--line);
-  background: var(--bg-1);
+  border-radius: 16px;
+  background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  padding: 4px 12px calc(4px + var(--safe-bottom));
-  gap: 3px;
+  padding: 6px 12px;
+  gap: 5px;
   box-shadow: none;
-  min-height: var(--bottom-bar-height);
+  min-height: 52px;
 }
 
 body[data-layout-profile="iphone"] .bottom-bar .transport-button {
@@ -3263,9 +3494,7 @@ body[data-layout-profile="iphone"] .bottom-bar .transport-status {
 
 body[data-layout-profile="iphone"][data-browser-profile="safari"] .editor-panel,
 body[data-layout-profile="iphone"][data-browser-profile="safari"] .chord-palette-panel,
-body[data-layout-profile="iphone"][data-browser-profile="safari"] .bottom-bar,
-body[data-layout-profile="iphone"][data-browser-profile="safari"] .top-shell,
-body[data-layout-profile="iphone"][data-browser-profile="safari"] .iphone-view-tabs {
+body[data-layout-profile="iphone"][data-browser-profile="safari"] .top-shell {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -3321,49 +3550,67 @@ body[data-layout-profile="iphone"] .tab-button {
 
 body[data-layout-profile="iphone"] .iphone-view-tabs {
   position: fixed;
-  bottom: calc(var(--bottom-bar-height) + var(--safe-bottom));
-  left: 0;
-  right: 0;
+  bottom: calc(60px + 8px + var(--safe-bottom));
+  left: 6px;
+  right: 6px;
   z-index: 200;
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  background: var(--bg-1);
-  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  padding: 2px 0;
+  padding: 0;
   height: var(--view-tabs-height);
+  transform: none;
 }
 
 body[data-layout-profile="iphone"] .iphone-view-tab {
-  flex: 1;
+  flex: 0 0 44px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 2px 4px 4px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: rgba(239, 200, 204, 0.5);
-  font-size: 0.55rem;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(255, 214, 219, 0.14);
+  border-radius: 50%;
+  background: rgba(32, 18, 22, 0.58);
+  color: rgba(239, 200, 204, 0.72);
+  font-size: 0;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: color 0.1s;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 body[data-layout-profile="iphone"] .iphone-view-tab.active {
-  color: var(--accent);
+  color: var(--accent-2);
+  background: rgba(255, 140, 149, 0.24);
+  border-color: rgba(255, 140, 149, 0.3);
+  box-shadow: 0 10px 24px rgba(255, 140, 149, 0.12);
+}
+
+body[data-layout-profile="iphone"] .iphone-view-tab:active {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 body[data-layout-profile="iphone"] .iphone-view-tab-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+}
+
+body[data-layout-profile="iphone"] .iphone-view-tab span {
+  display: none;
 }
 
 /* Editor view: hide everything except editor panel */
@@ -3383,9 +3630,930 @@ body[data-layout-profile="iphone"][data-iphone-view="chords"] .arrangement-overv
   display: none !important;
 }
 
+body[data-layout-profile="iphone"][data-iphone-view="chords"] {
+  --chord-player-dock-height: min(52dvh, 440px);
+  --chord-player-dock-bottom: calc(var(--bottom-bar-height) + var(--view-tabs-height) + 28px + var(--safe-bottom));
+}
+
+/* ===== CHORD ARRANGEMENT GRID VIEW ===== */
+
+.arrangement-view {
+  padding: 12px 8px 80px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Arrangement top bar with tempo */
+.arrangement-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 8px 12px;
+}
+
+body[data-layout-profile="iphone"] .arrangement-top-bar {
+  margin-bottom: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 214, 219, 0.08);
+  border-radius: 18px;
+  background: rgba(18, 10, 12, 0.16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.arr-top-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 214, 219, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.arr-top-icon-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+.arr-mode-switch {
+  display: flex;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 214, 219, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.arr-mode-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 220, 225, 0.5);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.arr-mode-btn.active {
+  background: rgba(255, 140, 149, 0.18);
+  color: var(--accent);
+}
+.arr-mode-btn:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+/* Hide palette's own mode switch when arrangement top bar has it */
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="chords"] #palette-mode-switch {
+  display: none !important;
+}
+.arr-tempo-control {
+  display: flex;
+  align-items: center;
+}
+.arr-tempo-readout {
+  appearance: none;
+  border: 1px solid rgba(255, 214, 219, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  min-width: 78px;
+  min-height: 36px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+  border-radius: 14px;
+}
+
+.arrangement-view.hidden {
+  display: none !important;
+}
+
+/* On iPhone chords view, hide old progression & section panels, show arrangement */
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .progression-panel,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .section-panel {
+  display: none !important;
+}
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .top-shell {
+  display: none !important;
+}
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .arrangement-view {
+  display: block;
+  padding:
+    10px
+    10px
+    calc(var(--chord-player-dock-height) + var(--chord-player-dock-bottom) + 28px)
+    10px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: var(--chord-player-dock-bottom);
+  z-index: 170;
+  margin: 0;
+  max-height: var(--chord-player-dock-height);
+  overflow-y: auto;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player {
+  padding: 10px 10px 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 214, 219, 0.14);
+  background: linear-gradient(180deg, rgba(52, 28, 34, 0.97), rgba(40, 20, 26, 0.98));
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35), 0 18px 44px rgba(0, 0, 0, 0.3);
+  color: var(--text);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums {
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(47, 28, 33, 0.96);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  color: var(--text);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .arrangement-view,
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .workspace-column-left,
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .workspace-column-right,
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .mode-panel,
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .editor-panel {
+  display: none !important;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .top-shell {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] {
+  padding-top: var(--safe-top);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .app-shell,
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .app-shell-inner {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .workspace {
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .palette-tempo-launch {
+  display: inline-flex;
+  width: auto;
+  min-width: 78px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .chord-palette-panel.chord-palette-panel--drums {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--bg-1);
+  box-shadow: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .chord-palette-panel.chord-palette-panel--drums .panel-head {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-1);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .chord-palette-panel.chord-palette-panel--drums .palette-head-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"][data-palette-mode="drums"] .chord-palette-panel.chord-palette-panel--drums .chord-palette.drum-mode {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding:
+    12px
+    12px
+    calc(var(--bottom-bar-height) + var(--view-tabs-height) + 28px + var(--safe-bottom))
+    12px;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--collapsed {
+  max-height: none;
+  padding-bottom: 12px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--collapsed .chord-palette,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--collapsed .chord-player-suggestion-row {
+  display: none !important;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player::-webkit-scrollbar,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .panel-head {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .panel-head {
+  display: grid;
+  gap: 8px;
+  align-items: start;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .panel-kicker,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .subtle-label {
+  color: rgba(255, 200, 210, 0.45);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .panel-head h2,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .panel-head h2 {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .panel-head h2 {
+  color: var(--text);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .panel-head h2 {
+  color: var(--text);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-head-actions,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .palette-head-actions {
+  align-items: stretch;
+  gap: 8px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .mode-switch,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .mode-switch {
+  width: 100%;
+  padding: 4px;
+  border-radius: 18px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .mode-switch {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 214, 219, 0.12);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .mode-switch {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 214, 219, 0.12);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .mode-button,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .mode-button {
+  min-height: 34px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .mode-button {
+  color: rgba(255, 220, 225, 0.55);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .mode-button {
+  color: rgba(255, 236, 239, 0.72);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .mode-button.active {
+  background: rgba(255, 140, 149, 0.18);
+  color: var(--accent-2);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .mode-button.active {
+  background: rgba(255, 176, 183, 0.18);
+  color: var(--accent-2);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .piano-visualizer,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--drums .piano-visualizer {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-status {
+  margin-top: 4px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-status-pill {
+  border-color: rgba(255, 214, 219, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 200, 210, 0.6);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-status-pill.is-armed {
+  background: rgba(255, 140, 149, 0.14);
+  border-color: rgba(255, 140, 149, 0.25);
+  color: var(--accent);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-palette,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-palette.borrowed-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  margin-top: 4px;
+  padding: 0;
+  border-top: 0;
+}
+
+/* Hide suggestion row in compact palette to prevent scrolling */
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row {
+  display: none !important;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-grid,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .chip-cloud {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-group {
+  gap: 0;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-group {
+  gap: 4px;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-group-label {
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-group .subtle-label {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 214, 219, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 200, 210, 0.5);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--player,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-chip {
+  min-height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 214, 219, 0.18);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  padding: 4px 6px 3px;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  gap: 4px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--player {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--player:hover,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--player:active,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-chip:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--player .palette-roman,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-chip span {
+  color: rgba(255, 200, 210, 0.5);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--player .palette-roman {
+  font-size: 0.55rem;
+  font-weight: 600;
+  opacity: 0.5;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--tonic,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-group--next .suggestion-chip {
+  background: linear-gradient(180deg, rgba(55, 185, 145, 0.25), rgba(42, 165, 128, 0.2));
+  border-color: rgba(55, 185, 145, 0.35);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--predominant,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-group--melody .suggestion-chip {
+  background: linear-gradient(180deg, rgba(145, 140, 235, 0.25), rgba(130, 125, 220, 0.2));
+  border-color: rgba(145, 140, 235, 0.35);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--dominant,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--diminished,
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .chord-player-suggestion-row .suggestion-group--color .suggestion-chip {
+  background: linear-gradient(180deg, rgba(220, 200, 100, 0.2), rgba(200, 180, 80, 0.15));
+  border-color: rgba(220, 200, 100, 0.3);
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="chords"] .chord-palette-panel.chord-palette-panel--player .palette-chip--color {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 214, 219, 0.15);
+}
+
+/* Suggestion row hidden in compact palette — see hide rule above */
+
+/* Section block */
+.arr-section-block {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line, rgba(255,255,255,0.08));
+}
+.arr-section-block:last-child {
+  border-bottom: none;
+}
+
+.arr-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 4px 4px;
+}
+
+.arr-section-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.arr-section-mini-btn {
+  border: 1px solid rgba(255, 214, 219, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 236, 239, 0.84);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-family: inherit;
+}
+
+.arr-section-mini-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.arr-section-mini-btn--danger {
+  color: #ffc1c6;
+  border-color: rgba(255, 140, 149, 0.22);
+  background: rgba(255, 140, 149, 0.08);
+}
+
+.arr-section-mini-btn--danger:active {
+  background: rgba(255, 140, 149, 0.16);
+}
+
+.arr-section-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-primary, #fdf4f4);
+  letter-spacing: -0.01em;
+}
+.arr-section-repeat {
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.4;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  letter-spacing: 0.03em;
+}
+
+/* Icon toolbar (floating pill with action icons) */
+.arr-icon-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(52, 28, 34, 0.95);
+  border: 1px solid rgba(255, 214, 219, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin: 0 4px 10px;
+  width: fit-content;
+  animation: arr-toolbar-in 0.15s ease-out;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+@keyframes arr-toolbar-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.arr-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text, #fff4f4);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.arr-icon-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+.arr-icon-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.arr-icon-btn--danger {
+  color: var(--danger, #ff6f7d);
+}
+.arr-icon-btn--danger:active {
+  background: rgba(255, 111, 125, 0.15);
+}
+.arr-icon-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 214, 219, 0.12);
+  margin: 0 2px;
+}
+
+/* Chord inspector icon row */
+.chord-inspector-icon-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 0 4px;
+}
+.ci-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line, rgba(255,255,255,0.1));
+  background: rgba(255, 244, 244, 0.05);
+  color: var(--text-primary, #fdf4f4);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ci-icon-btn:active {
+  background: rgba(255, 244, 244, 0.12);
+}
+.ci-icon-btn--primary {
+  background: rgba(255, 176, 183, 0.18);
+  border-color: rgba(255, 176, 183, 0.35);
+  color: #ffb0b7;
+}
+.ci-icon-btn--primary:active {
+  background: rgba(255, 176, 183, 0.3);
+}
+.ci-icon-btn--danger {
+  color: #fc8181;
+  border-color: rgba(252, 129, 129, 0.2);
+}
+.ci-icon-btn--danger:active {
+  background: rgba(252, 129, 129, 0.15);
+}
+
+/* Arrangement section actions (x, += Section, += Line) */
+.arrangement-section-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 4px 8px;
+  border-top: 1px solid var(--line, rgba(255,255,255,0.06));
+  margin-top: 4px;
+}
+.arr-section-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line, rgba(255,255,255,0.1));
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #fdf4f4);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.arr-section-action-btn:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+.arr-section-action-btn--wide {
+  flex: 1;
+}
+
+/* Row group (markers + cells) */
+.arr-row-group {
+  margin-bottom: 6px;
+}
+
+/* Measure markers */
+.arr-measure-markers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 0 4px;
+  margin-bottom: 2px;
+}
+.arr-measure-marker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  opacity: 0.35;
+  letter-spacing: 0.5px;
+  color: var(--text-primary, #fdf4f4);
+}
+.arr-tick {
+  display: inline-block;
+}
+.arr-tick--bar {
+  font-weight: 700;
+  margin-right: 2px;
+}
+.arr-tick--beat {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+
+/* Bar row */
+.arr-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.arr-bar-grid {
+  display: grid;
+  grid-auto-rows: minmax(98px, auto);
+  gap: 6px;
+  flex: 1;
+  position: relative;
+}
+
+.arr-bar-base,
+.arr-bar-cell {
+  grid-row: 1;
+  min-height: 98px;
+}
+
+.arr-bar-base {
+  border-radius: 18px;
+  border: 1.5px solid rgba(255, 214, 219, 0.08);
+  background: rgba(255, 244, 244, 0.015);
+}
+
+.arr-bar-base--overflow {
+  opacity: 0.35;
+  border-style: dashed;
+}
+
+/* Bar cell */
+.arr-bar-cell {
+  border-radius: 18px;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary, #fdf4f4);
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  padding: 14px 14px 10px;
+  line-height: 1.1;
+  text-align: left;
+  font-family: inherit;
+  position: relative;
+  z-index: 2;
+}
+.arr-bar-cell:active {
+  transform: translateY(3px);
+}
+
+/* Empty segment */
+.arr-bar-cell--empty {
+  justify-content: flex-end;
+}
+
+.arr-bar-cell--empty::after {
+  content: "+";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--text);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.arr-bar-cell--empty:hover::after {
+  opacity: 0.2;
+}
+
+.arr-bar-cell--empty:hover {
+  background: rgba(255, 244, 244, 0.04);
+}
+
+.arr-bar-cell--overflow {
+  opacity: 0.35;
+}
+
+.arr-bar-cell--selected {
+  border-color: var(--accent, #ffb0b7);
+  box-shadow: 0 0 0 3px var(--accent, #ffb0b7), 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.arr-bar-cell--live {
+  background: rgba(255, 176, 183, 0.15);
+  border-color: rgba(255, 176, 183, 0.5);
+}
+
+.arr-bar-cell--continued-left {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.arr-bar-cell--continued-right {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.arr-bar-cell-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.arr-bar-cell-meta {
+  margin-top: 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 200, 210, 0.45);
+}
+
+.arr-bar-cell[data-chord-function="tonic"] {
+  background: linear-gradient(180deg, rgba(55, 185, 145, 0.22), rgba(42, 165, 128, 0.18));
+  border-color: rgba(55, 185, 145, 0.4);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  color: var(--text);
+}
+.arr-bar-cell[data-chord-function="tonic"]:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.arr-bar-cell[data-chord-function="predominant"] {
+  background: linear-gradient(180deg, rgba(145, 140, 235, 0.22), rgba(130, 125, 220, 0.18));
+  border-color: rgba(145, 140, 235, 0.4);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  color: var(--text);
+}
+.arr-bar-cell[data-chord-function="predominant"]:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.arr-bar-cell[data-chord-function="dominant"] {
+  background: linear-gradient(180deg, rgba(220, 200, 100, 0.2), rgba(200, 180, 80, 0.16));
+  border-color: rgba(220, 200, 100, 0.35);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  color: var(--text);
+}
+.arr-bar-cell[data-chord-function="dominant"]:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.arr-bar-cell[data-chord-function="diminished"] {
+  background: linear-gradient(180deg, rgba(220, 160, 90, 0.2), rgba(200, 145, 75, 0.16));
+  border-color: rgba(220, 160, 90, 0.35);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  color: var(--text);
+}
+.arr-bar-cell[data-chord-function="diminished"]:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.arr-bar-cell[data-chord-function="color"] {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 214, 219, 0.18);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  color: var(--text);
+}
+.arr-bar-cell[data-chord-function="color"]:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.arr-bar-cell--selected[data-chord-function] {
+  border-color: var(--accent, #ff8c95);
+  box-shadow: 0 0 0 2px var(--accent, #ff8c95), 0 4px 0 rgba(0,0,0,0.25);
+}
+.arr-bar-cell--selected[data-chord-function]:active {
+  box-shadow: 0 0 0 2px var(--accent, #ff8c95), 0 1px 0 rgba(0,0,0,0.25);
+}
+
+/* + button to add row */
+.arr-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 36px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--line, rgba(255,255,255,0.12));
+  background: none;
+  color: var(--text-primary, #fdf4f4);
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.25;
+  margin-top: 8px;
+  transition: opacity 0.15s, background 0.15s;
+  font-family: inherit;
+}
+.arr-add-btn:hover, .arr-add-btn:active {
+  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Zoom banner */
+.arrangement-zoom-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f6e05e;
+  color: #744210;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+.arrangement-zoom-banner.hidden {
+  display: none;
+}
+
 /* ===== FULL-SCREEN EDITOR VIEW ===== */
 
 /* Tools toggle: hidden on iPad/Mac, visible on iPhone */
+.editor-settings-button { display: none !important; }
+body[data-layout-profile="iphone"] .editor-settings-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .melody-tools-toggle { display: none !important; }
 body[data-layout-profile="iphone"] .melody-tools-toggle {
   display: inline-flex !important;
@@ -3398,6 +4566,17 @@ body[data-layout-profile="iphone"] .melody-tools-toggle {
   font-weight: 600;
   border-radius: 6px;
   flex-shrink: 0;
+}
+
+body[data-layout-profile="iphone"] .editor-tempo-control {
+  gap: 5px;
+  margin-right: 6px;
+}
+
+body[data-layout-profile="iphone"] .editor-key-scale-readout {
+  max-width: 90px;
+  padding: 6px 8px;
+  font-size: 0.63rem;
 }
 
 body[data-layout-profile="iphone"][data-melody-tools-open] .melody-tools-toggle {
@@ -3432,10 +4611,21 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .top-shell {
 
 /* Body acts as the full-screen container — header gone, just the panel */
 body[data-layout-profile="iphone"][data-iphone-view="editor"] {
-  padding-top: var(--safe-top);
+  padding-top: calc(var(--safe-top) + 6px);
+  padding-bottom: 0;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"]::before {
+  content: none;
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"]::after {
+  content: none;
+  display: none;
 }
 
 body[data-layout-profile="iphone"][data-iphone-view="editor"] .app-shell {
@@ -3458,7 +4648,7 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .workspace {
 }
 
 body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-panel {
-  position: static;
+  position: relative;
   height: 100%;
   min-height: 0;
   display: flex;
@@ -3466,15 +4656,40 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-panel {
   overflow: hidden;
   padding: 0;
   border-top: none;
-  background: var(--bg-1);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  isolation: isolate;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-panel::before {
+  content: none;
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-panel::after {
+  content: none;
+  display: none;
 }
 
 body[data-layout-profile="iphone"][data-iphone-view="editor"] .panel-head {
   flex-shrink: 0;
   padding: 7px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: none;
   flex-wrap: nowrap;
   align-items: center;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-panel-title {
+  display: none;
+}
+
+body[data-layout-profile="iphone"] .editor-panel > .panel-head {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  position: relative;
+  z-index: 6;
 }
 
 /* Hide Studio/Arrangement tabs in pure editor view (they live in Tracks tab) */
@@ -3495,6 +4710,30 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-surface {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+  isolation: isolate;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-surface::before {
+  content: none;
+  display: none;
+}
+
+body[data-layout-profile="iphone"][data-iphone-view="editor"] .editor-surface::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: calc(var(--bottom-bar-height) + (var(--view-tabs-height) / 2) + 20px + var(--safe-bottom));
+  background: linear-gradient(
+    0deg,
+    rgba(18, 10, 12, 0.42) 0,
+    rgba(18, 10, 12, 0.42) 28%,
+    rgba(18, 10, 12, 0.24) 58%,
+    rgba(18, 10, 12, 0.08) 82%,
+    rgba(18, 10, 12, 0) 100%
+  );
+  pointer-events: none;
+  z-index: 4;
 }
 
 /* Melody layout fills editor surface */
@@ -3504,13 +4743,48 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-layout {
   display: flex;
   flex-direction: column;
   gap: 0;
+  position: relative;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 /* Layer bar padding within the fixed panel */
 body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-layer-bar {
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--line);
+  padding: 6px 10px;
+  border-bottom: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   flex-shrink: 0;
+  position: relative;
+  z-index: 6;
+}
+
+body[data-layout-profile="iphone"] .note-layer-switch {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+  background: rgba(255, 244, 244, 0.02);
+  border: 1px solid rgba(255, 214, 219, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+body[data-layout-profile="iphone"] .note-layer-switch .mode-button {
+  flex: 1 1 calc(50% - 6px);
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 214, 219, 0.08);
+  color: rgba(255, 236, 239, 0.78);
+}
+
+body[data-layout-profile="iphone"] .note-layer-switch .mode-button.active {
+  background: rgba(255, 140, 149, 0.3);
+  border-color: rgba(255, 140, 149, 0.26);
+  color: #fff4f4;
+}
+
+body[data-layout-profile="iphone"] .note-layer-switch .mode-button:active {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 /* Toolbar: HIDDEN by default in editor view, accessible via Tools button */
@@ -3522,15 +4796,22 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-toolbar {
 body[data-layout-profile="iphone"][data-iphone-view="editor"][data-melody-tools-open] .melody-toolbar {
   display: grid !important;
   position: fixed;
-  bottom: calc(var(--bottom-bar-height) + var(--view-tabs-height) + var(--safe-bottom));
-  left: 0;
-  right: 0;
+  bottom: calc(var(--bottom-bar-height) + var(--view-tabs-height) + 24px + var(--safe-bottom));
+  left: 12px;
+  right: 12px;
   z-index: 260;
-  background: var(--bg-1);
-  border-top: 2px solid var(--accent);
+  background: linear-gradient(180deg, rgba(44, 24, 29, 0.96), rgba(30, 16, 20, 0.98));
+  border: 1px solid rgba(255, 214, 219, 0.14);
+  border-top-color: rgba(255, 140, 149, 0.34);
+  border-radius: 20px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
   padding: 12px;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  max-height: min(52vh, 340px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Backdrop to dismiss the tools sheet */
@@ -3551,6 +4832,15 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .melody-shell {
   border: none;
   min-height: 0;
   align-items: start; /* let grid items take natural content height so shell can scroll */
+  position: relative;
+  z-index: 1;
+  margin-top: 0;
+  padding:
+    0
+    0
+    calc(var(--bottom-bar-height) + var(--view-tabs-height) + var(--safe-bottom) + 18px)
+    0;
+  background: rgba(40, 18, 22, 0.68);
 }
 
 /* Grid scroll handles horizontal pan only — vertical handled by melody-shell */
@@ -3560,11 +4850,13 @@ body[data-layout-profile="iphone"][data-iphone-view="editor"] .grid-scroll {
   overflow-x: auto;
   overflow-y: visible;
   touch-action: none; /* preserve pinch-to-zoom handler */
+  background: rgba(40, 18, 22, 0.7);
 }
 
 /* Pitch rail height matches full grid */
 body[data-layout-profile="iphone"][data-iphone-view="editor"] .pitch-rail {
   overflow: hidden;
+  background: rgba(57, 24, 30, 0.74);
 }
 
 /* Hide legend row and full note strip — actions now in layer bar + note popup */
@@ -3643,6 +4935,15 @@ body[data-notes-selected] .note-layer-actions {
 
 .nqp-btn:active {
   background: var(--accent);
+}
+
+.nqp-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.nqp-btn:disabled:active {
+  background: var(--bg-3, #3d1219);
 }
 
 /* Armed state — amber tint */
