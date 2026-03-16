@@ -795,6 +795,7 @@ function scheduleMelodicVoice(context, destination, event, startTime, beatDurati
   const filter = context.createBiquadFilter();
   const rawDurationSeconds = Math.max(0.04, event.durationBeats * beatDuration);
   const isChordTrack = event.track === "chords";
+  const isMelodyTrack = event.track === "melody";
   const durationSeconds = isChordTrack
     ? Math.max(rawDurationSeconds + Math.min(0.26, rawDurationSeconds * 0.45), 0.92)
     : rawDurationSeconds;
@@ -818,6 +819,20 @@ function scheduleMelodicVoice(context, destination, event, startTime, beatDurati
     gain.gain.linearRampToValueAtTime(sustainGain, startTime + 0.1);
     gain.gain.setValueAtTime(sustainGain, releaseStart);
     gain.gain.exponentialRampToValueAtTime(0.0001, releaseStart + releaseTime);
+  } else if (isMelodyTrack) {
+    const attackTime = Math.min(0.028, Math.max(0.012, durationSeconds * 0.16));
+    const settleTime = Math.min(0.08, Math.max(0.03, durationSeconds * 0.22));
+    const peakGain = baseVelocity * 0.2;
+    const sustainGain = peakGain * 0.88;
+    const releaseTime = Math.min(0.26, Math.max(0.08, durationSeconds * 0.18));
+    const releaseStart = Math.max(
+      startTime + attackTime + settleTime,
+      startTime + durationSeconds - releaseTime,
+    );
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + attackTime);
+    gain.gain.linearRampToValueAtTime(sustainGain, startTime + attackTime + settleTime);
+    gain.gain.setValueAtTime(sustainGain, releaseStart);
+    gain.gain.exponentialRampToValueAtTime(0.0001, releaseStart + releaseTime);
   } else {
     gain.gain.linearRampToValueAtTime(baseVelocity * 0.22, startTime + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationSeconds + 0.04);
@@ -828,10 +843,15 @@ function scheduleMelodicVoice(context, destination, event, startTime, beatDurati
   gain.connect(destination);
 
   oscillator.start(startTime);
-  oscillator.stop(startTime + durationSeconds + 0.08);
+  const stopTime = isChordTrack
+    ? startTime + durationSeconds + 0.08
+    : isMelodyTrack
+      ? startTime + durationSeconds + Math.min(0.26, Math.max(0.08, durationSeconds * 0.18)) + 0.05
+      : startTime + durationSeconds + 0.08;
+  oscillator.stop(stopTime);
 
   if (collector) {
-    collector.push({ node: oscillator, endTime: startTime + durationSeconds + 0.08 });
+    collector.push({ node: oscillator, endTime: stopTime });
   }
 }
 

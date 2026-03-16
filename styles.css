@@ -25,6 +25,10 @@
   --radius-sm: 16px;
   --beat-width: 56px;
   --row-height: 28px;
+  --note-handle-min-width: 6px;
+  --note-handle-max-width: 24px;
+  --note-handle-inset: 3px;
+  --note-handle-max-height: 18px;
 }
 
 * {
@@ -1580,6 +1584,18 @@ input:disabled {
   align-items: flex-start;
 }
 
+.settings-dialog-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-patch-version {
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
 .dialog-surface {
   margin-top: 14px;
 }
@@ -2211,9 +2227,9 @@ body[data-touch="true"].melody-interaction-locked {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 5px;
+  width: clamp(var(--note-handle-min-width), 17%, var(--note-handle-max-width));
   height: 60%;
-  max-height: 18px;
+  max-height: var(--note-handle-max-height);
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.25);
   touch-action: none;
@@ -2224,10 +2240,10 @@ body[data-touch="true"].melody-interaction-locked {
   z-index: 2;
 }
 .note-handle--left {
-  left: 3px;
+  left: var(--note-handle-inset);
 }
 .note-handle--right {
-  right: 3px;
+  right: var(--note-handle-inset);
 }
 .note-block:hover .note-handle,
 .note-block.active .note-handle {
@@ -2277,7 +2293,6 @@ body[data-touch="true"].melody-interaction-locked {
 }
 
 body[data-touch="true"] .note-handle {
-  width: 6px;
   opacity: 1;
 }
 

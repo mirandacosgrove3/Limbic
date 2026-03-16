@@ -100,6 +100,8 @@ const NOTE_LENGTH_DIVISOR_OPTIONS = [1, 2, 4, 8, 16, 32];
 const DEFAULT_RHYTHM_SNAP_DIVISOR = 16;
 const DEFAULT_QUANTIZE_DIVISOR = 16;
 const MIN_NOTE_DURATION_DIVISOR = 32;
+const DEFAULT_MELODY_NOTE_DURATION = 1;
+const SETTINGS_PATCH_VERSION = "P:V2";
 const DRUM_TIME_DIVISION_OPTIONS = [4, 8, 16, 32];
 const NOTE_MULTI_SELECT_HOLD_MS = 320;
 const NOTE_SELECT_ALL_HOLD_MS = 2500;
@@ -266,7 +268,7 @@ export class UIEditor {
       selectedChordIndex: null,
       scaleSnap: true,
       rhythmSnapDivisor: DEFAULT_RHYTHM_SNAP_DIVISOR,
-      lastPlacedNoteDuration: 0,
+      lastPlacedNoteDuration: DEFAULT_MELODY_NOTE_DURATION,
       drumGridCellSize: null,
       melodyZoom: 1,
       noteGridSize: DEFAULT_NOTE_GRID_SIZE,
@@ -322,10 +324,14 @@ export class UIEditor {
     this.noteQuickPopupEnabled = false;
     this.pendingNoteCopySelectionKey = null;
     this.pendingNoteResizeSelectionKey = null;
+    this.pendingNoteResizeHandle = "end";
     this.touchPinchState = null;
     this.postPinchPanState = null;
     this.pendingMelodyZoom = null;
+    this.pendingMelodyZoomAnchor = null;
+    this.pendingMelodyZoomViewport = null;
     this.melodyWheelZoomCommitTimer = null;
+    this.browserPinchState = null;
     this.pendingQuickSelect = null;
     this.pendingGridTouchTap = null;
     this.quickSelectState = null;
@@ -1598,8 +1604,29 @@ export class UIEditor {
     this.layoutProfile = this.getResolvedLayoutMode();
     this.layoutMetrics = this.getLayoutMetrics();
     const viewportFrame = this.getViewportFrame();
+    const melodyZoom = Math.max(1, this.state.melodyZoom || 1);
+    const noteHandleMinWidth = this.environment.hasTouch ? 7 : 6;
+    const noteHandleMaxWidth = clamp(
+      24 + (melodyZoom - 1) * (this.environment.hasTouch ? 3 : 2),
+      24,
+      this.environment.hasTouch ? 30 : 28,
+    );
+    const noteHandleInset = clamp(
+      2 + (melodyZoom - 1) * 0.6,
+      2,
+      5,
+    );
+    const noteHandleMaxHeight = clamp(
+      18 + (melodyZoom - 1) * 6,
+      18,
+      30,
+    );
     this.root.style.setProperty("--beat-width", `${this.layoutMetrics.beatWidth}px`);
     this.root.style.setProperty("--row-height", `${this.layoutMetrics.rowHeight}px`);
+    this.root.style.setProperty("--note-handle-min-width", `${noteHandleMinWidth.toFixed(2)}px`);
+    this.root.style.setProperty("--note-handle-max-width", `${noteHandleMaxWidth.toFixed(2)}px`);
+    this.root.style.setProperty("--note-handle-inset", `${noteHandleInset.toFixed(2)}px`);
+    this.root.style.setProperty("--note-handle-max-height", `${noteHandleMaxHeight.toFixed(2)}px`);
     document.documentElement.style.setProperty("--viewport-height", `${Math.round(viewportFrame.height)}px`);
     document.documentElement.style.setProperty("--viewport-offset-top", `${Math.round(viewportFrame.offsetTop)}px`);
     document.body.dataset.layoutProfile = this.layoutProfile;
@@ -2432,6 +2459,7 @@ export class UIEditor {
 
   clearPendingNoteResizeDrag() {
     this.pendingNoteResizeSelectionKey = null;
+    this.pendingNoteResizeHandle = "end";
   }
 
   isNoteCopyDragArmed(noteIds = this.getSelectedNoteIds()) {
@@ -2442,6 +2470,10 @@ export class UIEditor {
   isNoteResizeDragArmed(noteIds = this.getSelectedNoteIds()) {
     const selectionKey = this.getNoteSelectionKey(noteIds);
     return Boolean(selectionKey && this.pendingNoteResizeSelectionKey === selectionKey);
+  }
+
+  getNoteResizeDragHandle(noteIds = this.getSelectedNoteIds()) {
+    return this.isNoteResizeDragArmed(noteIds) ? (this.pendingNoteResizeHandle || "end") : null;
   }
 
   canResizeSelectedNotes(noteIds = this.getSelectedNoteIds()) {
@@ -2530,6 +2562,7 @@ export class UIEditor {
   armSelectedNotesForResizeDrag(noteIds = this.getSelectedNoteIds(), {
     primaryId = noteIds.at(-1) || null,
     multiSelect = noteIds.length > 1,
+    handle = "end",
   } = {}) {
     if (!this.canResizeSelectedNotes(noteIds)) {
       this.clearPendingNoteResizeDrag();
@@ -2540,6 +2573,7 @@ export class UIEditor {
     if (!selectionKey) return;
     this.setSelectedNotes(noteIds, { primaryId, multiSelect });
     this.pendingNoteResizeSelectionKey = selectionKey;
+    this.pendingNoteResizeHandle = handle === "start" ? "start" : "end";
     this.clearPendingNoteCopyDrag();
     this.noteQuickPopupEnabled = false;
     this.renderMelodyEditor();
@@ -2590,11 +2624,11 @@ export class UIEditor {
   }
 
   getDefaultMelodyStepDuration() {
-    // Mimic last placed/selected note length, fallback to snap step
+    // Mimic the last used note length, otherwise start with a full beat.
     if (this.state.lastPlacedNoteDuration > 0) {
       return this.state.lastPlacedNoteDuration;
     }
-    return this.getRhythmSnapStepBeats();
+    return DEFAULT_MELODY_NOTE_DURATION;
   }
 
   getActiveRollNotes(section = this.getActiveSection()) {
@@ -3947,10 +3981,10 @@ export class UIEditor {
 
     this.refs.settingsDialog.classList.remove("hidden");
     this.refs.settingsDialog.setAttribute("aria-hidden", "false");
+    this.refs.settingsDialog.querySelector(".settings-patch-version").textContent = SETTINGS_PATCH_VERSION;
     this.refs.settingsDialogSurface.innerHTML = `
       <div class="mode-stack">
         <article class="inspector-card">
-          <p class="subtle-label">Project Settings</p>
           <div class="sheet-actions" style="margin-top:12px">
             <button class="action-button danger" data-settings-dialog-action="start-blank-project">Start Blank</button>
           </div>
@@ -4444,8 +4478,8 @@ export class UIEditor {
             style="left:${note.startBeat * beatWidth + 2}px;top:${noteTop}px;width:${width}px;height:${rowHeight - 4}px"
             data-note-id="${note.id}"
           >
-            <span class="note-handle note-handle--left" data-note-id="${note.id}" data-note-handle="move"></span>
-            <span class="note-handle note-handle--right" data-note-id="${note.id}" data-note-handle="resize"></span>
+            <span class="note-handle note-handle--left" data-note-id="${note.id}" data-note-handle="resize-start"></span>
+            <span class="note-handle note-handle--right" data-note-id="${note.id}" data-note-handle="resize-end"></span>
           </div>
         `;
       })
@@ -6550,6 +6584,8 @@ export class UIEditor {
   } = {}) {
     this.applyLiveMelodyPinchScale(1);
     this.pendingMelodyZoom = null;
+    this.pendingMelodyZoomAnchor = null;
+    this.pendingMelodyZoomViewport = null;
     this.state.melodyZoom = nextZoom;
     this.applyLayoutMetrics();
     this.renderMelodyEditor();
@@ -6577,7 +6613,12 @@ export class UIEditor {
       const nextZoom = typeof this.pendingMelodyZoom === "number" && Number.isFinite(this.pendingMelodyZoom)
         ? this.pendingMelodyZoom
         : previousZoom;
-      this.commitMelodyPinchZoom({ previousZoom, nextZoom });
+      this.commitMelodyPinchZoom({
+        previousZoom,
+        nextZoom,
+        anchor: this.pendingMelodyZoomAnchor,
+        viewport: this.pendingMelodyZoomViewport,
+      });
     }, delay);
   }
 
@@ -7335,6 +7376,54 @@ export class UIEditor {
     if (this.state.activeTab !== "melody") return;
     if (!this.isMelodyGestureTarget(event.target)) return;
     if (event.cancelable) event.preventDefault();
+    const clientX = Number.isFinite(event.clientX) ? event.clientX : window.innerWidth / 2;
+    const clientY = Number.isFinite(event.clientY) ? event.clientY : window.innerHeight / 2;
+    if (event.type === "gesturestart") {
+      if (this.melodyWheelZoomCommitTimer) {
+        window.clearTimeout(this.melodyWheelZoomCommitTimer);
+        this.melodyWheelZoomCommitTimer = null;
+      }
+      const initialZoom = this.state.melodyZoom || 1;
+      this.pendingMelodyZoom = null;
+      this.pendingMelodyZoomAnchor = null;
+      this.pendingMelodyZoomViewport = null;
+      this.browserPinchState = {
+        initialZoom,
+        nextZoom: initialZoom,
+        anchor: this.getMelodyZoomAnchor(clientX, clientY),
+        viewport: this.getMelodyViewportPoint(clientX, clientY),
+      };
+      this.setMelodyInteractionLock(true);
+      return;
+    }
+    if (!this.browserPinchState) return;
+    if (event.type === "gesturechange") {
+      const nextZoom = clamp(
+        this.browserPinchState.initialZoom * Math.max(0.001, event.scale || 1),
+        MIN_MELODY_ZOOM,
+        MAX_MELODY_ZOOM,
+      );
+      const viewport = this.getMelodyViewportPoint(clientX, clientY);
+      this.browserPinchState.nextZoom = nextZoom;
+      this.browserPinchState.viewport = viewport;
+      this.applyLiveMelodyPinchScale(
+        nextZoom / Math.max(this.browserPinchState.initialZoom, 0.001),
+        this.browserPinchState.anchor,
+        viewport,
+      );
+      return;
+    }
+    if (event.type === "gestureend") {
+      const { initialZoom, nextZoom, anchor, viewport } = this.browserPinchState;
+      this.browserPinchState = null;
+      this.commitMelodyPinchZoom({
+        previousZoom: initialZoom,
+        nextZoom,
+        anchor,
+        viewport,
+      });
+      this.setMelodyInteractionLock(false);
+    }
   }
 
   handlePaletteContextMenu(event) {
@@ -7375,8 +7464,16 @@ export class UIEditor {
       MAX_MELODY_ZOOM,
     );
     if (nextZoom === currentZoom) return;
+    const anchor = this.getMelodyZoomAnchor(event.clientX, event.clientY);
+    const viewport = this.getMelodyViewportPoint(event.clientX, event.clientY);
     this.pendingMelodyZoom = nextZoom;
-    this.applyLiveMelodyPinchScale(nextZoom / Math.max(this.state.melodyZoom || 1, 0.001));
+    this.pendingMelodyZoomAnchor = anchor;
+    this.pendingMelodyZoomViewport = viewport;
+    this.applyLiveMelodyPinchScale(
+      nextZoom / Math.max(this.state.melodyZoom || 1, 0.001),
+      anchor,
+      viewport,
+    );
     this.queueMelodyZoomCommit(45);
   }
 
@@ -7390,6 +7487,7 @@ export class UIEditor {
     const selectedIds = this.getNoteInteractionSelectionIds(note.id);
     const copyOnDrop = mode === "move" && this.isNoteCopyDragArmed(selectedIds);
     const consumeResizeArm = mode === "resize" && this.isNoteResizeDragArmed(selectedIds);
+    const resizeHandle = mode === "resize" ? (this.getNoteResizeDragHandle(selectedIds) || "end") : null;
     const visiblePitches = this.getVisiblePitchRange();
     const originalNotes = Object.fromEntries(
       selectedIds.map((noteId) => {
@@ -7424,6 +7522,7 @@ export class UIEditor {
       originalNotes,
       copyOnDrop,
       consumeResizeArm,
+      resizeHandle,
       moved: false,
       ghostElements: [],
     };
@@ -7504,7 +7603,8 @@ export class UIEditor {
 
     event.preventDefault();
     const selectedIds = this.getNoteInteractionSelectionIds(noteId);
-    const touchedResizeHandle = Boolean(event.target.closest(".note-handle"));
+    const touchedResizeHandle = event.target.closest(".note-handle");
+    const resizeHandle = touchedResizeHandle?.dataset?.noteHandle === "resize-start" ? "start" : "end";
     const armResizeOnTap = touchedResizeHandle
       && !(event.shiftKey || event.metaKey || event.ctrlKey)
       && !this.state.noteMultiSelectActive
@@ -7544,6 +7644,7 @@ export class UIEditor {
       mode,
       armResizeOnTap,
       resizeSelectionIds: selectedIds,
+      resizeHandle,
       startedAt: Date.now(),
     };
     this.state.pendingNotePress = pendingPress;
@@ -7612,21 +7713,41 @@ export class UIEditor {
       if (!originalNotes.length) return;
       const minDuration = this.getMinimumMelodyStepDuration();
       const overflowAllowance = this.getRhythmSnapStepBeats();
-      const clampedBeatDelta = clamp(
-        beatDelta,
-        -Math.min(...originalNotes.map((entry) => Math.max(0, entry.duration - minDuration))),
-        Math.min(...originalNotes.map((entry) => Math.max(0, sectionBeats + overflowAllowance - entry.startBeat - entry.duration))),
-      );
+      const resizeFromStart = this.dragState.resizeHandle === "start";
+      const clampedBeatDelta = resizeFromStart
+        ? clamp(
+          beatDelta,
+          -Math.min(...originalNotes.map((entry) => entry.startBeat)),
+          Math.min(...originalNotes.map((entry) => Math.max(0, entry.duration - minDuration))),
+        )
+        : clamp(
+          beatDelta,
+          -Math.min(...originalNotes.map((entry) => Math.max(0, entry.duration - minDuration))),
+          Math.min(...originalNotes.map((entry) => Math.max(0, sectionBeats + overflowAllowance - entry.startBeat - entry.duration))),
+        );
       this.dragState.noteIds.forEach((noteId) => {
         const note = this.getActiveRollNotes().find((entry) => entry.id === noteId);
         const original = this.dragState.originalNotes?.[noteId];
         if (!note || !original) return;
-        note.duration = clamp(
-          original.duration + clampedBeatDelta,
-          minDuration,
-          Math.max(minDuration, sectionBeats + overflowAllowance - original.startBeat),
-        );
-        note.startBeat = original.startBeat;
+        if (resizeFromStart) {
+          note.startBeat = clamp(
+            original.startBeat + clampedBeatDelta,
+            0,
+            original.startBeat + original.duration - minDuration,
+          );
+          note.duration = clamp(
+            original.duration - clampedBeatDelta,
+            minDuration,
+            Math.max(minDuration, sectionBeats + overflowAllowance - note.startBeat),
+          );
+        } else {
+          note.duration = clamp(
+            original.duration + clampedBeatDelta,
+            minDuration,
+            Math.max(minDuration, sectionBeats + overflowAllowance - original.startBeat),
+          );
+          note.startBeat = original.startBeat;
+        }
         this.updateDraggedNoteElement(note);
       });
     } else {
@@ -7689,6 +7810,7 @@ export class UIEditor {
           this.armSelectedNotesForResizeDrag(pendingPress.resizeSelectionIds || [pendingPress.noteId], {
             primaryId: pendingPress.noteId,
             multiSelect: false,
+            handle: pendingPress.resizeHandle,
           });
         } else if (pendingPress.mode !== "resize") {
           // Clean tap on a note block — handle selection and popup here.
