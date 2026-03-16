@@ -6597,14 +6597,7 @@ export class UIEditor {
     if (this.state.noteMultiSelectActive) return "move";
     const noteId = noteBlock?.dataset?.noteId || null;
     const selectedIds = this.getNoteInteractionSelectionIds(noteId);
-    if ((event.pointerType === "touch" || event.pointerType === "pen") && this.isNoteResizeDragArmed(selectedIds)) {
-      return "resize";
-    }
-    if (event.target.closest(".note-handle--right")) return "resize";
-    if (event.pointerType === "touch" || event.pointerType === "pen") return "move";
-    const rect = noteBlock.getBoundingClientRect();
-    const resizeZoneWidth = 14;
-    return event.clientX >= rect.right - resizeZoneWidth ? "resize" : "move";
+    return this.isNoteResizeDragArmed(selectedIds) ? "resize" : "move";
   }
 
   getQuickSelectBrushRadius(pointerType = "mouse") {
@@ -7511,19 +7504,11 @@ export class UIEditor {
 
     event.preventDefault();
     const selectedIds = this.getNoteInteractionSelectionIds(noteId);
-    const touchedResizeHandle = Boolean(event.target.closest(".note-handle--right"));
-    const isTouchResizeArmGesture = touchedResizeHandle
-      && (event.pointerType === "touch" || event.pointerType === "pen")
+    const touchedResizeHandle = Boolean(event.target.closest(".note-handle"));
+    const armResizeOnTap = touchedResizeHandle
+      && !(event.shiftKey || event.metaKey || event.ctrlKey)
       && !this.state.noteMultiSelectActive
       && !this.isNoteResizeDragArmed(selectedIds);
-    if (isTouchResizeArmGesture) {
-      this.armSelectedNotesForResizeDrag(selectedIds, {
-        primaryId: note.id,
-        multiSelect: selectedIds.length > 1,
-      });
-      this.state.suppressNextEditorClick = true;
-      return;
-    }
     const mode = this.getNotePointerMode(noteBlock, event);
     const modifierMultiSelect = mode === "move" && (event.shiftKey || event.metaKey || event.ctrlKey);
 
@@ -7557,6 +7542,8 @@ export class UIEditor {
       startX: event.clientX,
       startY: event.clientY,
       mode,
+      armResizeOnTap,
+      resizeSelectionIds: selectedIds,
       startedAt: Date.now(),
     };
     this.state.pendingNotePress = pendingPress;
@@ -7698,7 +7685,12 @@ export class UIEditor {
       }
       if (!this.dragState && !heldLongEnough) {
         this.state.suppressNextEditorClick = true;
-        if (pendingPress.mode !== "resize") {
+        if (pendingPress.armResizeOnTap) {
+          this.armSelectedNotesForResizeDrag(pendingPress.resizeSelectionIds || [pendingPress.noteId], {
+            primaryId: pendingPress.noteId,
+            multiSelect: false,
+          });
+        } else if (pendingPress.mode !== "resize") {
           // Clean tap on a note block — handle selection and popup here.
           // Suppress the subsequent click event to prevent double-handling on touch.
           this.handleNoteSelectionTap(pendingPress.noteId);
